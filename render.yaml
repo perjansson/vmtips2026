@@ -2,7 +2,9 @@ services:
   - type: web
     name: vmtips2026
     runtime: node
-    plan: hobby
+    # Instanstyp: "starter" är alltid igång (inga kallstarter). "free" finns
+    # också men spinner ner vid inaktivitet, vilket ger långsam första visning.
+    plan: starter
     buildCommand: npm ci
     startCommand: npm start
     envVars:

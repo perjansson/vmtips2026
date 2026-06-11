@@ -57,14 +57,15 @@ npm test                    # enhetstester (node:test, inga extra beroenden)
 
 Inga hemligheter behövs – arket är publikt läsbart.
 
-## Deploy på Render (Hobby)
+## Deploy på Render
 
 1. Pusha repot till GitHub/GitLab.
 2. På [render.com](https://render.com): **New → Blueprint** och peka på repot –
    `render.yaml` sätter upp web-servicen och env-variablerna.
    (Eller **New → Web Service** manuellt: runtime Node, build `npm ci`,
-   start `npm start`, plan Hobby, samt env-variablerna ovan.)
-3. Klart – Hobby-planen är alltid igång, inga kallstarter.
+   start `npm start`, instanstyp Starter, samt env-variablerna ovan.)
+3. Klart. Instanstypen `starter` är alltid igång (inga kallstarter);
+   `free` fungerar också men spinner ner vid inaktivitet.
 
 ## Kalkylarkets layout (förväntad)
 
