@@ -1,5 +1,6 @@
 import express from 'express';
 import path from 'node:path';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { fetchTab, fetchParticipants } from './src/sheetClient.js';
 import { createSheetResultProvider } from './src/resultProvider.js';
@@ -95,7 +96,23 @@ app.get('/api/standings', (req, res) => {
 });
 
 const publicDir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'public');
-app.use(express.static(publicDir));
+
+// Startsidan serveras med aktuell ställning inbakad, så att första målningen
+// redan har data i stället för en tom tavla som väntar på första pollen.
+// JSON:en escapas (< → <) så den inte kan bryta sig ur script-taggen.
+const indexTemplate = readFileSync(path.join(publicDir, 'index.html'), 'utf8');
+app.get(['/', '/index.html'], (req, res) => {
+  const json = state.payload
+    ? JSON.stringify(state.payload).replaceAll('<', '\\u003c')
+    : 'null';
+  res.set('Cache-Control', 'no-cache');
+  res.type('html').send(indexTemplate.replace('/*__INITIAL__*/null', json));
+});
+
+// Statiska filer får cachas en stund av mobilen – minskar risken för
+// ostylad sida vid omladdning på segt nät. ETag gör att de ändå
+// revalideras billigt efter en deploy.
+app.use(express.static(publicDir, { maxAge: '5m', index: false }));
 
 await refreshFacit();
 await refreshPredictions();

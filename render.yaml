@@ -7,6 +7,9 @@ services:
     plan: starter
     buildCommand: npm ci
     startCommand: npm start
+    # Render släpper inte in trafik förrän nya instansen svarar här –
+    # ger sömlösa deployer utan "Not Found"-fönster.
+    healthCheckPath: /api/standings
     envVars:
       - key: SHEET_ID
         value: 1NlUCIKlLgaWAmGq4UKAcCAvzuwwKdMGLkDiWh7ZFoeY

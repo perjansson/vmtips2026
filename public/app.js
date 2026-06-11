@@ -206,4 +206,13 @@ async function poll() {
   }
 }
 
+// Servern bakar in aktuell ställning i sidan – rendera den direkt så att
+// första målningen har data, och polla sedan som vanligt.
+if (window.__INITIAL_STANDINGS__) {
+  try {
+    render(window.__INITIAL_STANDINGS__);
+  } catch {
+    // trasig/inaktuell inbakad data – pollningen tar över
+  }
+}
 poll();
