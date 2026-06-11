@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: vmtips2026
+    runtime: node
+    plan: hobby
+    buildCommand: npm ci
+    startCommand: npm start
+    envVars:
+      - key: SHEET_ID
+        value: 1NlUCIKlLgaWAmGq4UKAcCAvzuwwKdMGLkDiWh7ZFoeY
+      - key: SHEET_REFRESH_SECONDS
+        value: "15"
+      - key: CLIENT_POLL_SECONDS
+        value: "5"
+      - key: PREDICTIONS_REFRESH_SECONDS
+        value: "300"
