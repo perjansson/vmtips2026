@@ -21,6 +21,11 @@ export function parseMatchString(s) {
   return { home: m[0], away: m[1] };
 }
 
+// Delade match-hjälpare: spelad/tippad = båda målen ifyllda; parnyckel för
+// att para ihop samma fixture mellan flikar.
+export const isPlayed = (m) => m.homeGoals !== null && m.awayGoals !== null;
+export const matchPairKey = (m) => `${teamKey(m.home)}|${teamKey(m.away)}`;
+
 // Målcell → heltal eller null (tom/ej numerisk = ospelad/otippad).
 export function parseGoals(cell) {
   const s = String(cell ?? '').replace(NBSP, ' ').trim();

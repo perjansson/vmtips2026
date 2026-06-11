@@ -1,16 +1,11 @@
 import { scoreParticipant, scoreGroupMatch } from './scoring.js';
 import { computeGroupTable } from './groupTable.js';
 import { computeAdvancement } from './advancement.js';
-import { GROUPS } from './sheetParse.js';
-import { teamKey } from './parse.js';
+import { GROUPS, emptyRounds } from './sheetParse.js';
+import { isPlayed, matchPairKey } from './parse.js';
 
-const EMPTY_PREDICTIONS = {
-  matches: [],
-  rounds: { r32: [], r16: [], qf: [], sf: [], final: [], winner: null },
-};
+const EMPTY_PREDICTIONS = { matches: [], rounds: emptyRounds() };
 
-const pairKey = (m) => `${teamKey(m.home)}|${teamKey(m.away)}`;
-const isPlayed = (m) => m.homeGoals !== null && m.awayGoals !== null;
 const byDate = (a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.i - b.i);
 
 // Senaste 5 spelade (nyast först) och kommande 5 ospelade (i datumordning)
@@ -25,7 +20,7 @@ function matchWindows(facitMatches) {
 
 function windowWithTips(windowMatches, predByPair) {
   return windowMatches.map((m) => {
-    const pred = predByPair.get(pairKey(m)) ?? null;
+    const pred = predByPair.get(matchPairKey(m)) ?? null;
     return {
       date: m.date,
       group: m.group,
@@ -48,7 +43,7 @@ export function computeStandings({ participants, predictionsByName, facit }) {
   const scored = participants.map((name) => {
     const predictions = predictionsByName.get(name) ?? null;
     const score = scoreParticipant(predictions ?? EMPTY_PREDICTIONS, facit);
-    const predByPair = new Map((predictions?.matches ?? []).map((m) => [pairKey(m), m]));
+    const predByPair = new Map((predictions?.matches ?? []).map((m) => [matchPairKey(m), m]));
     return {
       name,
       missingTab: predictions === null,
@@ -82,9 +77,7 @@ export function computeStandings({ participants, predictionsByName, facit }) {
     prevRank = p.rank;
   });
 
-  const playedMatches = facit.matches.filter(
-    (m) => m.homeGoals !== null && m.awayGoals !== null,
-  ).length;
+  const playedMatches = facit.matches.filter(isPlayed).length;
   const groupStageComplete = facit.matches.length > 0 && playedMatches === facit.matches.length;
 
   let advancement = null;
@@ -102,13 +95,6 @@ export function computeStandings({ participants, predictionsByName, facit }) {
       totalMatches: facit.matches.length,
       groupStageComplete,
       winner: facit.rounds.winner,
-      roundCounts: {
-        r32: facit.rounds.r32.length,
-        r16: facit.rounds.r16.length,
-        qf: facit.rounds.qf.length,
-        sf: facit.rounds.sf.length,
-        final: facit.rounds.final.length,
-      },
       advancement,
     },
   };

@@ -16,6 +16,9 @@ const ROUND_LABELS = new Map([
 
 export const ROUND_KEYS = ['r32', 'r16', 'qf', 'sf', 'final'];
 
+// En tom rondstruktur – enda stället som definierar formen.
+export const emptyRounds = () => ({ r32: [], r16: [], qf: [], sf: [], final: [], winner: null });
+
 // Rader från gviz A1:E96&headers=0. gviz tappar grupprubriker och tomrader
 // (kolumn A typas som datum), så exakt de 72 matchraderna överlever, i ordning.
 // Match i tillhör grupp floor(i/6).
@@ -40,7 +43,7 @@ export function parseMatchRows(rows) {
 // Rader från gviz A98:B165&headers=0. Sektion byts när kolumn A matchar en
 // känd etikett; lagnamn läses ur kolumn B. Tomma rader får falla bort fritt.
 export function parseKnockoutRows(rows) {
-  const rounds = { r32: [], r16: [], qf: [], sf: [], final: [], winner: null };
+  const rounds = emptyRounds();
   let current = null;
   for (const row of rows) {
     const label = normalizeTeam(row[0] ?? '').toLowerCase();

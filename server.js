@@ -53,6 +53,11 @@ async function refreshFacit() {
       fetchParticipants(config.sheetId),
     ]);
     const newNames = participants.filter((n) => !state.predictionsByName.has(n));
+    // Rensa tips för deltagare som tagits bort ur Ställning – annars skulle en
+    // återinlagd deltagare serveras gammal cache tills nästa tips-uppdatering.
+    for (const name of [...state.predictionsByName.keys()]) {
+      if (!participants.includes(name)) state.predictionsByName.delete(name);
+    }
     state.facit = facit;
     state.participants = participants;
     recompute();

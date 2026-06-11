@@ -1,4 +1,4 @@
-import { teamKey } from './parse.js';
+import { teamKey, matchPairKey } from './parse.js';
 import { ROUND_KEYS } from './sheetParse.js';
 
 export const POINTS = {
@@ -24,13 +24,10 @@ export function scoreGroupMatch(pred, actual) {
   return points;
 }
 
-const matchPairKey = (m) => `${teamKey(m.home)}|${teamKey(m.away)}`;
-
 function scoreGroups(predMatches, facitMatches) {
   const facitByPair = new Map(facitMatches.map((m) => [matchPairKey(m), m]));
   let points = 0;
   let scoredMatches = 0;
-  const perMatch = [];
   for (const pred of predMatches) {
     const actual = facitByPair.get(matchPairKey(pred));
     const matchPoints = actual ? scoreGroupMatch(pred, actual) : null;
@@ -38,9 +35,8 @@ function scoreGroups(predMatches, facitMatches) {
       points += matchPoints;
       scoredMatches++;
     }
-    perMatch.push(matchPoints);
   }
-  return { points, scoredMatches, perMatch };
+  return { points, scoredMatches };
 }
 
 // 5 p per lag i deltagarens rondlista som finns i facitlistan för samma rond,

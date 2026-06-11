@@ -1,4 +1,4 @@
-import { teamKey } from './parse.js';
+import { teamKey, isPlayed } from './parse.js';
 
 // Portning av Apps Script-funktionen GRUPPTABELL.
 // Rangordning (FIFA VM 2026 per spec): poäng → inbördes möten bland poänglika
@@ -11,7 +11,7 @@ function emptyRow(team) {
 
 function tally(rows, matches) {
   for (const match of matches) {
-    if (match.homeGoals === null || match.awayGoals === null) continue;
+    if (!isPlayed(match)) continue;
     const home = rows.get(teamKey(match.home));
     const away = rows.get(teamKey(match.away));
     home.played++; away.played++;
