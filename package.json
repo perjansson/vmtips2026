@@ -1,0 +1,17 @@
+{
+  "name": "vmtips2026",
+  "version": "1.0.0",
+  "description": "Live-ställning för VM 2026-tipset",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}
