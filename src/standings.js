@@ -1,20 +1,54 @@
-import { scoreParticipant } from './scoring.js';
+import { scoreParticipant, scoreGroupMatch } from './scoring.js';
 import { computeGroupTable } from './groupTable.js';
 import { computeAdvancement } from './advancement.js';
 import { GROUPS } from './sheetParse.js';
+import { teamKey } from './parse.js';
 
 const EMPTY_PREDICTIONS = {
   matches: [],
   rounds: { r32: [], r16: [], qf: [], sf: [], final: [], winner: null },
 };
 
+const pairKey = (m) => `${teamKey(m.home)}|${teamKey(m.away)}`;
+const isPlayed = (m) => m.homeGoals !== null && m.awayGoals !== null;
+const byDate = (a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.i - b.i);
+
+// Senaste 5 spelade (nyast först) och kommande 5 ospelade (i datumordning)
+// ur facit. Radordningen i arket är per grupp, inte kronologisk, så vi
+// sorterar på datumkolumnen (ISO-format) med radindex som stabil utväg.
+function matchWindows(facitMatches) {
+  const indexed = facitMatches.map((m, i) => ({ ...m, i }));
+  const played = indexed.filter(isPlayed).sort(byDate);
+  const upcoming = indexed.filter((m) => !isPlayed(m)).sort(byDate);
+  return { recent: played.slice(-5).reverse(), upcoming: upcoming.slice(0, 5) };
+}
+
+function windowWithTips(windowMatches, predByPair) {
+  return windowMatches.map((m) => {
+    const pred = predByPair.get(pairKey(m)) ?? null;
+    return {
+      date: m.date,
+      group: m.group,
+      home: m.home,
+      away: m.away,
+      homeGoals: m.homeGoals,
+      awayGoals: m.awayGoals,
+      tipHome: pred?.homeGoals ?? null,
+      tipAway: pred?.awayGoals ?? null,
+      points: pred ? scoreGroupMatch(pred, m) : null,
+    };
+  });
+}
+
 // Komponerar API-svaret: poäng per deltagare (rangordnat, delad placering vid
 // lika poäng) + facit-metadata, inkl. preliminärt avancemang när gruppspelet
 // är färdigspelat ("ej fastställd"-fallet redovisas i stället för att gissas).
 export function computeStandings({ participants, predictionsByName, facit }) {
+  const windows = matchWindows(facit.matches);
   const scored = participants.map((name) => {
     const predictions = predictionsByName.get(name) ?? null;
     const score = scoreParticipant(predictions ?? EMPTY_PREDICTIONS, facit);
+    const predByPair = new Map((predictions?.matches ?? []).map((m) => [pairKey(m), m]));
     return {
       name,
       missingTab: predictions === null,
@@ -22,6 +56,10 @@ export function computeStandings({ participants, predictionsByName, facit }) {
       groupPoints: score.groupPoints,
       knockoutPoints: score.knockoutPoints,
       winnerPick: predictions?.rounds.winner ?? null,
+      matches: {
+        recent: windowWithTips(windows.recent, predByPair),
+        upcoming: windowWithTips(windows.upcoming, predByPair),
+      },
       breakdown: {
         group: {
           points: score.breakdown.group.points,

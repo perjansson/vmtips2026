@@ -1,6 +1,6 @@
 // Pollar /api/standings och uppdaterar tavlan mjukt: rader återanvänds per
-// namn (ingen blink), omsortering animeras med FLIP, poängändringar blinkar
-// till och placeringsbyten får ▲/▼.
+// namn (ingen blink), omsortering animeras med FLIP och poängändringar
+// blinkar till.
 
 const board = document.getElementById('board');
 const rowTemplate = document.getElementById('row-template');
@@ -9,7 +9,7 @@ const progressEl = document.getElementById('match-progress');
 const noticeEl = document.getElementById('notice');
 
 const rowsByName = new Map();   // namn → li-element
-const lastSeen = new Map();     // namn → { rank, total } från förra svaret
+const lastTotals = new Map();   // namn → total från förra svaret
 let pollSeconds = 5;
 let lastUpdatedAt = null;
 
@@ -53,6 +53,55 @@ function detailRows(p, facitWinner) {
   return rows;
 }
 
+const shortDate = (iso) => {
+  const parts = String(iso).split('-');
+  return parts.length === 3 ? `${Number(parts[2])}/${Number(parts[1])}` : iso;
+};
+
+function matchItem(m, played) {
+  const li = document.createElement('li');
+  const date = document.createElement('span');
+  date.className = 'match-date';
+  date.textContent = shortDate(m.date);
+  const teams = document.createElement('span');
+  teams.className = 'match-teams';
+  teams.textContent = `${m.home} – ${m.away}`;
+  const figures = document.createElement('span');
+  figures.className = 'match-figures';
+
+  const hasTip = m.tipHome !== null && m.tipAway !== null;
+  const tipText = hasTip ? `tips ${m.tipHome}–${m.tipAway}` : 'otippad';
+  if (played) {
+    const result = document.createElement('span');
+    result.className = 'result';
+    result.textContent = `${m.homeGoals}–${m.awayGoals}`;
+    const tip = document.createElement('span');
+    tip.className = 'tip';
+    tip.textContent = ` · ${tipText}`;
+    figures.append(result, tip);
+    if (m.points !== null) {
+      const pts = document.createElement('span');
+      pts.className = 'pts';
+      pts.textContent = ` +${m.points} p`;
+      figures.append(pts);
+    }
+  } else {
+    const tip = document.createElement('span');
+    tip.className = 'tip';
+    tip.textContent = tipText;
+    figures.append(tip);
+  }
+  li.append(date, teams, figures);
+  return li;
+}
+
+function renderMatchSection(li, selector, matches, played) {
+  const section = li.querySelector(selector);
+  section.hidden = matches.length === 0;
+  section.querySelector('.match-list')
+    .replaceChildren(...matches.map((m) => matchItem(m, played)));
+}
+
 function renderDetail(li, p, facitWinner) {
   const dl = li.querySelector('.detail-grid');
   dl.replaceChildren(...detailRows(p, facitWinner).flatMap(([label, points, sub]) => {
@@ -68,6 +117,8 @@ function renderDetail(li, p, facitWinner) {
     }
     return [dt, dd];
   }));
+  renderMatchSection(li, '.match-recent', p.matches.recent, true);
+  renderMatchSection(li, '.match-upcoming', p.matches.upcoming, false);
 }
 
 function renderRow(li, p, data) {
@@ -80,14 +131,8 @@ function renderRow(li, p, data) {
   li.querySelector('.row-button').setAttribute('aria-label',
     `${p.name}, plats ${p.rank}, ${p.total} poäng. Visa detaljer.`);
 
-  const move = li.querySelector('.move');
-  const prev = lastSeen.get(p.name);
-  if (prev && prev.rank !== p.rank) {
-    const up = p.rank < prev.rank;
-    move.textContent = up ? '▲' : '▼';
-    move.className = `move ${up ? 'up' : 'down'}`;
-  }
-  if (prev && prev.total !== p.total) {
+  const prevTotal = lastTotals.get(p.name);
+  if (prevTotal !== undefined && prevTotal !== p.total) {
     li.classList.remove('points-flash');
     void li.offsetWidth; // starta om animationen
     li.classList.add('points-flash');
@@ -124,7 +169,7 @@ function render(data) {
     return li;
   });
   flipReorder(ordered);
-  for (const p of data.participants) lastSeen.set(p.name, { rank: p.rank, total: p.total });
+  for (const p of data.participants) lastTotals.set(p.name, p.total);
 
   progressEl.textContent = `${data.facit.playedMatches} av ${data.facit.totalMatches} matcher spelade`;
   lastUpdatedAt = new Date(data.updatedAt);

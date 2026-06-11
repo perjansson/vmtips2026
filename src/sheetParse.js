@@ -28,6 +28,7 @@ export function parseMatchRows(rows) {
     const { home, away } = parseMatchString(r[1]);
     return {
       group: GROUPS[Math.floor(i / MATCHES_PER_GROUP)],
+      date: String(r[0] ?? '').trim(),
       home,
       away,
       homeGoals: parseGoals(r[2]),

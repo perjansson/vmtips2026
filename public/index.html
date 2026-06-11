@@ -12,8 +12,8 @@
 <body>
   <header class="hero">
     <div class="pitch-lines" aria-hidden="true"></div>
-    <p class="hero-kicker">VM-tipset 2026</p>
-    <h1 class="hero-title">Live&#8209;ställning</h1>
+    <h1 class="hero-title">VM&#8209;tipset 2026</h1>
+    <p class="hero-kicker">Live&#8209;ställning</p>
     <p class="hero-meta">
       <span id="match-progress">–</span>
       <span class="dot" aria-hidden="true">·</span>
@@ -37,7 +37,6 @@
         <span class="rank-badge"></span>
         <span class="who">
           <span class="name"></span>
-          <span class="move" aria-hidden="true"></span>
           <span class="chips">
             <span class="chip chip-group">Grupp <b></b></span>
             <span class="chip chip-knockout">Slutspel <b></b></span>
@@ -50,6 +49,14 @@
       </button>
       <div class="detail" hidden>
         <dl class="detail-grid"></dl>
+        <section class="match-section match-recent" hidden>
+          <h3>Senaste matcher</h3>
+          <ul class="match-list"></ul>
+        </section>
+        <section class="match-section match-upcoming" hidden>
+          <h3>Kommande matcher</h3>
+          <ul class="match-list"></ul>
+        </section>
       </div>
     </li>
   </template>

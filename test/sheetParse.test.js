@@ -21,7 +21,7 @@ test('parseMatchRows yields 72 matches with group by block index', () => {
   assert.equal(matches[6].group, 'B');
   assert.equal(matches[71].group, 'L');
   assert.deepEqual(matches[0], {
-    group: 'A', home: 'Lag00A', away: 'Lag00B', homeGoals: 2, awayGoals: 1,
+    group: 'A', date: '2026-06-11', home: 'Lag00A', away: 'Lag00B', homeGoals: 2, awayGoals: 1,
   });
   assert.equal(matches[1].homeGoals, null);
   assert.equal(matches[1].awayGoals, null);
