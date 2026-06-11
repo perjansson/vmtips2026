@@ -3,7 +3,8 @@
 :root {
   --grass: #1f9d55;
   --grass-deep: #15703c;
-  --bg: #f4f6f4;
+  --pitch: #2aa45f;
+  --pitch-deep: #167a42;
   --surface: #ffffff;
   --surface-2: #eef2ee;
   --ink: #15231a;
@@ -20,7 +21,8 @@
   :root {
     --grass: #34c573;
     --grass-deep: #1f9d55;
-    --bg: #0e1511;
+    --pitch: #14502e;
+    --pitch-deep: #0b3018;
     --surface: #18221b;
     --surface-2: #1f2c23;
     --ink: #e8f0e9;
@@ -33,23 +35,27 @@
 
 * { box-sizing: border-box; }
 
+/* Hela sidan är gräsplanen: klippränder + djupgradient. Korten ligger
+   ovanpå med ljus/mörk yta för tydlig kontrast. */
 body {
   margin: 0;
-  background: var(--bg);
+  background:
+    repeating-linear-gradient(90deg,
+      rgba(255, 255, 255, 0.05) 0 56px, transparent 56px 112px),
+    linear-gradient(160deg, var(--pitch), var(--pitch-deep));
+  background-attachment: fixed;
   color: var(--ink);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   line-height: 1.45;
   -webkit-font-smoothing: antialiased;
 }
 
-/* ---- Header med diskret planmotiv ---- */
+/* ---- Header direkt på gräset, med planlinjer och studsande bollar ---- */
 
 .hero {
   position: relative;
-  overflow: hidden;
-  background: linear-gradient(160deg, var(--grass-deep), var(--grass));
   color: #f3fbf5;
-  padding: 2.2rem 1.25rem 2.6rem;
+  padding: 2.2rem 1.25rem 3.4rem;
   text-align: center;
 }
 
@@ -60,13 +66,39 @@ body {
   background:
     /* mittcirkel */
     radial-gradient(circle at 50% 100%,
-      transparent 0 87px, rgba(255, 255, 255, 0.28) 88px 90px, transparent 91px),
+      transparent 0 87px, rgba(255, 255, 255, 0.25) 88px 90px, transparent 91px),
     /* mittlinje */
-    linear-gradient(to bottom, transparent calc(100% - 2px), rgba(255, 255, 255, 0.28) 0),
-    /* gräsränder */
-    repeating-linear-gradient(90deg,
-      rgba(255, 255, 255, 0.045) 0 56px, transparent 56px 112px);
+    linear-gradient(to bottom, transparent calc(100% - 2px), rgba(255, 255, 255, 0.25) 0);
 }
+
+.balls { position: absolute; inset: 0; pointer-events: none; }
+
+.balls span {
+  position: absolute;
+  bottom: 2rem;
+  left: var(--x);
+  font-size: var(--size);
+  line-height: 1;
+  animation: bounce var(--dur) infinite;
+  animation-delay: var(--delay);
+  filter: drop-shadow(0 5px 4px rgba(0, 0, 0, 0.3));
+  transform-origin: 50% 100%;
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0) scale(1.08, 0.88);
+    animation-timing-function: ease-out;
+  }
+  18% { transform: translateY(-0.35em) scale(1, 1); }
+  50% {
+    transform: translateY(-1.1em) scale(1, 1);
+    animation-timing-function: ease-in;
+  }
+  82% { transform: translateY(-0.4em) scale(1, 1); }
+}
+
+.hero-title, .hero-kicker { position: relative; }
 
 .hero-title {
   margin: 0;
@@ -312,7 +344,7 @@ main {
   max-width: 44rem;
   margin: 0 auto;
   padding: 0.5rem 1.25rem 2rem;
-  color: var(--ink-soft);
+  color: rgba(243, 251, 245, 0.78);
   font-size: 0.76rem;
   text-align: center;
 }
@@ -325,4 +357,5 @@ main {
 @media (prefers-reduced-motion: reduce) {
   .row.flip { transition: none; }
   .row.points-flash .total-value { animation: none; }
+  .balls span { animation: none; }
 }
