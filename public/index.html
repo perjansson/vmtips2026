@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>VM-tipset 2026 – Live-ställning</title>
+  <meta name="description" content="Aktuell ställning i VM 2026-tipset, uppdateras live.">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='44' fill='none' stroke='%231f9d55' stroke-width='8'/%3E%3Ccircle cx='50' cy='50' r='14' fill='%231f9d55'/%3E%3C/svg%3E">
+</head>
+<body>
+  <header class="hero">
+    <div class="pitch-lines" aria-hidden="true"></div>
+    <p class="hero-kicker">VM-tipset 2026</p>
+    <h1 class="hero-title">Live&#8209;ställning</h1>
+    <p class="hero-meta">
+      <span id="match-progress">–</span>
+      <span class="dot" aria-hidden="true">·</span>
+      <span id="updated-at">Hämtar…</span>
+    </p>
+  </header>
+
+  <main>
+    <p id="notice" class="notice" hidden></p>
+    <ol id="board" class="board" aria-label="Topplista"></ol>
+  </main>
+
+  <footer class="foot">
+    <p>Poäng räknas om live från kalkylarket. Gruppmatch: 3 p rätt utgång + 1 p per prickat målantal.
+       Lag vidare per rond: 5 p/lag. VM&#8209;vinnare: 10 p.</p>
+  </footer>
+
+  <template id="row-template">
+    <li class="row">
+      <button class="row-button" type="button" aria-expanded="false">
+        <span class="rank-badge"></span>
+        <span class="who">
+          <span class="name"></span>
+          <span class="move" aria-hidden="true"></span>
+          <span class="chips">
+            <span class="chip chip-group">Grupp <b></b></span>
+            <span class="chip chip-knockout">Slutspel <b></b></span>
+          </span>
+        </span>
+        <span class="total">
+          <span class="total-value">0</span>
+          <span class="total-unit">p</span>
+        </span>
+      </button>
+      <div class="detail" hidden>
+        <dl class="detail-grid"></dl>
+      </div>
+    </li>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>

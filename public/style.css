@@ -1,0 +1,279 @@
+/* VM-tipset 2026 – stilrent resultattavle-tema, mobil först. */
+
+:root {
+  --grass: #1f9d55;
+  --grass-deep: #15703c;
+  --bg: #f4f6f4;
+  --surface: #ffffff;
+  --surface-2: #eef2ee;
+  --ink: #15231a;
+  --ink-soft: #5b6b5f;
+  --line: #dde4dd;
+  --gold: #d4a017;
+  --silver: #9aa3ad;
+  --bronze: #b06d3f;
+  --flash: rgba(31, 157, 85, 0.18);
+  --shadow: 0 1px 2px rgba(21, 35, 26, 0.06), 0 8px 24px -16px rgba(21, 35, 26, 0.25);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --grass: #34c573;
+    --grass-deep: #1f9d55;
+    --bg: #0e1511;
+    --surface: #18221b;
+    --surface-2: #1f2c23;
+    --ink: #e8f0e9;
+    --ink-soft: #93a597;
+    --line: #2a3a2e;
+    --flash: rgba(52, 197, 115, 0.22);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 28px -18px rgba(0, 0, 0, 0.8);
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---- Header med diskret planmotiv ---- */
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(160deg, var(--grass-deep), var(--grass));
+  color: #f3fbf5;
+  padding: 2.2rem 1.25rem 2.6rem;
+  text-align: center;
+}
+
+.pitch-lines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    /* mittcirkel */
+    radial-gradient(circle at 50% 100%,
+      transparent 0 87px, rgba(255, 255, 255, 0.28) 88px 90px, transparent 91px),
+    /* mittlinje */
+    linear-gradient(to bottom, transparent calc(100% - 2px), rgba(255, 255, 255, 0.28) 0),
+    /* gräsränder */
+    repeating-linear-gradient(90deg,
+      rgba(255, 255, 255, 0.045) 0 56px, transparent 56px 112px);
+}
+
+.hero-kicker {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.hero-title {
+  margin: 0.15rem 0 0.4rem;
+  font-size: clamp(2rem, 7vw, 3rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.hero-meta {
+  position: relative;
+  margin: 0;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.92;
+}
+
+.hero-meta .dot { margin: 0 0.45em; opacity: 0.6; }
+
+/* ---- Lista ---- */
+
+main {
+  max-width: 44rem;
+  margin: -1.4rem auto 0;
+  padding: 0 0.9rem 1rem;
+  position: relative;
+}
+
+.notice {
+  margin: 0 0 0.75rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 0.6rem;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+}
+
+.board {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.row {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 0.85rem;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  will-change: transform;
+}
+
+.row.is-leader { border-color: color-mix(in srgb, var(--grass) 55%, var(--line)); }
+
+.row.flip { transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1); }
+
+.row.points-flash .total-value { animation: flash 1.2s ease-out; }
+
+@keyframes flash {
+  0% { background: var(--flash); box-shadow: 0 0 0 6px var(--flash); }
+  100% { background: transparent; box-shadow: 0 0 0 6px transparent; }
+}
+
+.row-button {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  width: 100%;
+  padding: 0.7rem 0.9rem;
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.row-button:focus-visible {
+  outline: 3px solid var(--grass);
+  outline-offset: -3px;
+  border-radius: 0.85rem;
+}
+
+/* Placering som tröjnummer */
+.rank-badge {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2.3rem;
+  height: 2.3rem;
+  border-radius: 0.55rem;
+  background: var(--surface-2);
+  color: var(--ink-soft);
+  font-weight: 800;
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+  border: 1px solid var(--line);
+}
+
+.row[data-rank="1"] .rank-badge { background: var(--gold); border-color: var(--gold); color: #fff; }
+.row[data-rank="2"] .rank-badge { background: var(--silver); border-color: var(--silver); color: #fff; }
+.row[data-rank="3"] .rank-badge { background: var(--bronze); border-color: var(--bronze); color: #fff; }
+
+.who { flex: 1; min-width: 0; }
+
+.name {
+  display: inline-block;
+  font-weight: 700;
+  font-size: 1.02rem;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+.move { margin-left: 0.3rem; font-size: 0.8rem; }
+.move.up { color: var(--grass); }
+.move.down { color: #c0392b; }
+
+.chips {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.15rem;
+  flex-wrap: wrap;
+}
+
+.chip {
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+  background: var(--surface-2);
+  border-radius: 999px;
+  padding: 0.1rem 0.55rem;
+  white-space: nowrap;
+}
+
+.chip b { font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+.total {
+  flex: none;
+  display: flex;
+  align-items: baseline;
+  gap: 0.18rem;
+}
+
+.total-value {
+  font-size: 1.7rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  border-radius: 0.4rem;
+}
+
+.total-unit { color: var(--ink-soft); font-size: 0.85rem; font-weight: 600; }
+
+/* ---- Detaljvy ---- */
+
+.detail { border-top: 1px dashed var(--line); padding: 0.7rem 0.9rem 0.85rem; }
+
+.detail-grid {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.28rem 1rem;
+  font-size: 0.86rem;
+}
+
+.detail-grid dt { color: var(--ink-soft); }
+
+.detail-grid dd {
+  margin: 0;
+  text-align: right;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.detail-grid .subtle { font-weight: 400; color: var(--ink-soft); }
+
+/* ---- Sidfot ---- */
+
+.foot {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 0.5rem 1.25rem 2rem;
+  color: var(--ink-soft);
+  font-size: 0.76rem;
+  text-align: center;
+}
+
+@media (min-width: 600px) {
+  .row-button { padding: 0.85rem 1.1rem; }
+  .total-value { font-size: 2rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row.flip { transition: none; }
+  .row.points-flash .total-value { animation: none; }
+}
