@@ -77,7 +77,7 @@ body {
   position: absolute;
   bottom: 2rem;
   left: var(--x);
-  font-size: var(--size);
+  font-size: calc(var(--size) * var(--ball-scale, 1));
   line-height: 1;
   animation: bounce var(--dur) infinite;
   animation-delay: var(--delay);
@@ -352,6 +352,11 @@ main {
 @media (min-width: 600px) {
   .row-button { padding: 0.85rem 1.1rem; }
   .total-value { font-size: 2rem; }
+  .balls { --ball-scale: 1.45; }
+}
+
+@media (min-width: 1000px) {
+  .balls { --ball-scale: 1.9; }
 }
 
 @media (prefers-reduced-motion: reduce) {
