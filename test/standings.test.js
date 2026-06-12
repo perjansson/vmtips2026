@@ -90,3 +90,18 @@ test('exposes facit meta: played matches and winner', () => {
   assert.equal(standings.facit.totalMatches, 2);
   assert.equal(standings.facit.winner, 'X');
 });
+
+test('exposes all played matches as results, newest first', () => {
+  const played = [1, 2, 3].map((d) => match(`H${d}`, `B${d}`, d, 0, `2026-06-0${d}`));
+  const facitPlayed = {
+    matches: [...played, match('H9', 'B9', null, null, '2026-06-09')],
+    rounds: emptyRounds,
+  };
+  const standings = computeStandings({ participants: [], predictionsByName: new Map(), facit: facitPlayed });
+  assert.deepEqual(standings.facit.results.map((m) => m.date),
+    ['2026-06-03', '2026-06-02', '2026-06-01']);
+  assert.deepEqual(
+    standings.facit.results[0],
+    { date: '2026-06-03', group: 'A', home: 'H3', away: 'B3', homeGoals: 3, awayGoals: 0 },
+  );
+});

@@ -15,7 +15,11 @@ function matchWindows(facitMatches) {
   const indexed = facitMatches.map((m, i) => ({ ...m, i }));
   const played = indexed.filter(isPlayed).sort(byDate);
   const upcoming = indexed.filter((m) => !isPlayed(m)).sort(byDate);
-  return { recent: played.slice(-5).reverse(), upcoming: upcoming.slice(0, 5) };
+  return {
+    recent: played.slice(-5).reverse(),
+    upcoming: upcoming.slice(0, 5),
+    playedDesc: played.slice().reverse(),
+  };
 }
 
 function windowWithTips(windowMatches, predByPair) {
@@ -91,6 +95,15 @@ export function computeStandings({ participants, predictionsByName, facit }) {
   return {
     participants: scored,
     facit: {
+      // Alla spelade matcher, nyast först – för resultatlistan i headern.
+      results: windows.playedDesc.map((m) => ({
+        date: m.date,
+        group: m.group,
+        home: m.home,
+        away: m.away,
+        homeGoals: m.homeGoals,
+        awayGoals: m.awayGoals,
+      })),
       playedMatches,
       totalMatches: facit.matches.length,
       groupStageComplete,

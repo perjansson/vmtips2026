@@ -126,6 +126,56 @@ body {
 
 .hero-meta .dot { margin: 0 0.45em; opacity: 0.6; }
 
+/* Spelade matcher (facit) i headern */
+.played {
+  position: relative;
+  margin: 0.9rem auto 0;
+  max-width: 24rem;
+  font-size: 0.85rem;
+}
+
+.played-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+}
+
+.played-list li {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 0.55rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.played-list .pd { opacity: 0.75; font-size: 0.78rem; }
+.played-list .ps { font-weight: 800; }
+
+.played-toggle {
+  margin-top: 0.4rem;
+  background: none;
+  border: 0;
+  padding: 0.15rem 0.4rem;
+  color: inherit;
+  font: inherit;
+  font-size: 0.8rem;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  opacity: 0.85;
+  cursor: pointer;
+  border-radius: 0.3rem;
+}
+
+.played-toggle:hover { opacity: 1; }
+
+.played-toggle:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
 /* ---- Lista ---- */
 
 main {

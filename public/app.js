@@ -7,6 +7,51 @@ const rowTemplate = document.getElementById('row-template');
 const updatedAtEl = document.getElementById('updated-at');
 const progressEl = document.getElementById('match-progress');
 const noticeEl = document.getElementById('notice');
+const playedEl = document.getElementById('played');
+const playedListEl = document.getElementById('played-list');
+const playedToggleEl = document.getElementById('played-toggle');
+
+const PLAYED_PREVIEW = 5;
+let showAllPlayed = false;
+
+playedToggleEl.addEventListener('click', () => {
+  showAllPlayed = !showAllPlayed;
+  renderPlayed(lastResults);
+});
+
+let lastResults = [];
+
+// Senast spelade matcher (facit) i headern: 5 visas, resten bakom en toggle.
+function renderPlayed(results) {
+  lastResults = results;
+  playedEl.hidden = results.length === 0;
+  if (results.length === 0) return;
+
+  const visible = showAllPlayed ? results : results.slice(0, PLAYED_PREVIEW);
+  playedListEl.replaceChildren(...visible.map((m) => {
+    const li = document.createElement('li');
+    const date = document.createElement('span');
+    date.className = 'pd';
+    date.textContent = shortDate(m.date);
+    const teams = document.createElement('span');
+    teams.className = 'pt';
+    teams.textContent = `${m.home} – ${m.away}`;
+    const score = document.createElement('span');
+    score.className = 'ps';
+    score.textContent = `${m.homeGoals}–${m.awayGoals}`;
+    li.append(date, teams, score);
+    return li;
+  }));
+
+  const hasMore = results.length > PLAYED_PREVIEW;
+  playedToggleEl.hidden = !hasMore;
+  if (hasMore) {
+    playedToggleEl.textContent = showAllPlayed
+      ? 'Visa färre'
+      : `Visa alla ${results.length} spelade matcher`;
+    playedToggleEl.setAttribute('aria-expanded', String(showAllPlayed));
+  }
+}
 
 const rowsByName = new Map();   // namn → li-element
 const lastTotals = new Map();   // namn → total från förra svaret
@@ -172,6 +217,7 @@ function render(data) {
   for (const p of data.participants) lastTotals.set(p.name, p.total);
 
   progressEl.textContent = `${data.facit.playedMatches} av ${data.facit.totalMatches} matcher spelade`;
+  renderPlayed(data.facit.results ?? []);
   lastUpdatedAt = new Date(data.updatedAt);
   updatedAtEl.textContent = `Senast uppdaterad ${lastUpdatedAt.toLocaleTimeString('sv-SE')}`;
 
