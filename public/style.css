@@ -3,8 +3,8 @@
 :root {
   --grass: #1f9d55;
   --grass-deep: #15703c;
-  --pitch: #2aa45f;
-  --pitch-deep: #167a42;
+  --pitch: #35b16c;
+  --pitch-deep: #1d8a4e;
   --surface: #ffffff;
   --surface-2: #eef2ee;
   --ink: #15231a;
@@ -21,8 +21,8 @@
   :root {
     --grass: #34c573;
     --grass-deep: #1f9d55;
-    --pitch: #14502e;
-    --pitch-deep: #0b3018;
+    --pitch: #1b5e38;
+    --pitch-deep: #113f23;
     --surface: #18221b;
     --surface-2: #1f2c23;
     --ink: #e8f0e9;
@@ -35,15 +35,20 @@
 
 * { box-sizing: border-box; }
 
-/* Hela sidan är gräsplanen: klippränder + djupgradient. Korten ligger
-   ovanpå med ljus/mörk yta för tydlig kontrast. */
-body {
-  margin: 0;
+/* Hela sidan är gräsplanen: klippränder + djupgradient. Ligger på html
+   (inte body) så att den täcker hela fönstret även när innehållet är
+   kortare än skärmen. Korten ligger ovanpå med ljus/mörk yta. */
+html {
   background:
     repeating-linear-gradient(90deg,
       rgba(255, 255, 255, 0.05) 0 56px, transparent 56px 112px),
     linear-gradient(160deg, var(--pitch), var(--pitch-deep));
   background-attachment: fixed;
+}
+
+body {
+  margin: 0;
+  background: none;
   color: var(--ink);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   line-height: 1.45;
@@ -180,7 +185,7 @@ body {
 
 main {
   max-width: 44rem;
-  margin: -1.4rem auto 0;
+  margin: 0.8rem auto 0;
   padding: 0 0.9rem 1rem;
   position: relative;
 }
