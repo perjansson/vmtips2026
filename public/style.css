@@ -76,7 +76,8 @@ body {
     linear-gradient(to bottom, transparent calc(100% - 2px), rgba(255, 255, 255, 0.25) 0);
 }
 
-.balls { position: absolute; inset: 0; pointer-events: none; }
+/* Bollarna döljs på mobil (tar för mycket plats), visas från 600px. */
+.balls { display: none; position: absolute; inset: 0; pointer-events: none; }
 
 .balls span {
   position: absolute;
@@ -407,7 +408,7 @@ main {
 @media (min-width: 600px) {
   .row-button { padding: 0.85rem 1.1rem; }
   .total-value { font-size: 2rem; }
-  .balls { --ball-scale: 1.45; }
+  .balls { display: block; --ball-scale: 1.45; }
 }
 
 @media (min-width: 1000px) {
