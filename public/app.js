@@ -7,50 +7,237 @@ const rowTemplate = document.getElementById('row-template');
 const updatedAtEl = document.getElementById('updated-at');
 const progressEl = document.getElementById('match-progress');
 const noticeEl = document.getElementById('notice');
-const playedEl = document.getElementById('played');
-const playedListEl = document.getElementById('played-list');
-const playedToggleEl = document.getElementById('played-toggle');
+const schedEl = document.getElementById('sched');
+const schedDaysEl = document.getElementById('sched-days');
+const schedMoreEl = document.getElementById('sched-more');
+const schedLessEl = document.getElementById('sched-less');
+const schedShowEl = document.getElementById('sched-show');
 
-const PLAYED_PREVIEW = 5;
-let showAllPlayed = false;
+// --- Matchschema i headern ---------------------------------------------
+// Det statiska schemat (window.SCHEDULE) ger ordning, tider, kanal och
+// dagens TV4 Play-ägare. Resultat matchas in från facit på lagnamn.
 
-playedToggleEl.addEventListener('click', () => {
-  showAllPlayed = !showAllPlayed;
-  renderPlayed(lastResults);
+const teamKey = (s) => String(s ?? '')
+  .replace(/[  ]/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+
+// Platta ut schemat till en kronologisk lista med globalt ordningsindex,
+// behåll dagstillhörigheten via dayIndex.
+const SCHED_DAYS = window.SCHEDULE ?? [];
+const FIXTURES_BY_DAY = SCHED_DAYS.map(() => []);
+SCHED_DAYS.forEach((day, dayIndex) => {
+  day.games.forEach((g) => {
+    FIXTURES_BY_DAY[dayIndex].push({
+      ...g,
+      pair: g.home ? `${teamKey(g.home)}|${teamKey(g.away)}` : null,
+    });
+  });
 });
 
-let lastResults = [];
+const DAYS_PER_CLICK = 2;   // antal extra matchdagar per "Visa fler"-klick
+let extraDays = 0;          // utökar fönstrets bakre kant framåt
+let lastScoreByPair = new Map();
+const dayBlocks = new Map(); // dayIndex -> dagblock i DOM
+let schedReady = false;      // hoppa över in-animation vid första renderingen
 
-// Senast spelade matcher (facit) i headern: 5 visas, resten bakom en toggle.
-function renderPlayed(results) {
-  lastResults = results;
-  playedEl.hidden = results.length === 0;
-  if (results.length === 0) return;
+const prefersReduced = () =>
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const isDesktop = () => window.matchMedia('(min-width: 600px)').matches;
 
-  const visible = showAllPlayed ? results : results.slice(0, PLAYED_PREVIEW);
-  playedListEl.replaceChildren(...visible.map((m) => {
-    const li = document.createElement('li');
-    const date = document.createElement('span');
-    date.className = 'pd';
-    date.textContent = shortDate(m.date);
-    const teams = document.createElement('span');
-    teams.className = 'pt';
-    teams.textContent = `${m.home} – ${m.away}`;
-    const score = document.createElement('span');
-    score.className = 'ps';
-    score.textContent = `${m.homeGoals}–${m.awayGoals}`;
-    li.append(date, teams, score);
-    return li;
-  }));
+function animateIn(el) {
+  el.classList.add('sd-enter');
+  el.addEventListener('animationend', () => el.classList.remove('sd-enter'), { once: true });
+}
+function animateOut(el) {
+  el.classList.add('sd-exit');
+  el.addEventListener('animationend', () => el.remove(), { once: true });
+}
+// animationend bubblar – kör bara callbacken för elementets egen animation.
+function onSelfAnimEnd(el, cb) {
+  const handler = (e) => {
+    if (e.target !== el) return;
+    el.removeEventListener('animationend', handler);
+    cb();
+  };
+  el.addEventListener('animationend', handler);
+}
 
-  const hasMore = results.length > PLAYED_PREVIEW;
-  playedToggleEl.hidden = !hasMore;
-  if (hasMore) {
-    playedToggleEl.textContent = showAllPlayed
-      ? 'Visa färre'
-      : `Visa alla ${results.length} spelade matcher`;
-    playedToggleEl.setAttribute('aria-expanded', String(showAllPlayed));
+// Dagens datum i svensk tidszon som 'YYYY-MM-DD'.
+function todayISO() {
+  return new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Europe/Stockholm', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date());
+}
+
+// Förskjut ett ISO-datum med ett antal dygn (ren kalenderaritmetik i UTC).
+function isoShift(iso, deltaDays) {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + deltaDays)).toISOString().slice(0, 10);
+}
+
+schedMoreEl.addEventListener('click', () => {
+  extraDays += DAYS_PER_CLICK;
+  renderSchedule(lastScoreByPair);
+});
+schedLessEl.addEventListener('click', () => {
+  extraDays = 0;
+  renderSchedule(lastScoreByPair);
+});
+schedShowEl.addEventListener('click', () => {
+  const collapsing = !schedEl.classList.contains('collapsed');
+  schedShowEl.textContent = collapsing ? 'Visa matcher' : 'Dölj matcher';
+  schedShowEl.setAttribute('aria-expanded', String(!collapsing));
+
+  if (prefersReduced()) {
+    schedEl.classList.toggle('collapsed', collapsing);
+    return;
   }
+  if (collapsing) {
+    schedDaysEl.classList.add('anim-out');
+    onSelfAnimEnd(schedDaysEl, () => {
+      schedDaysEl.classList.remove('anim-out');
+      schedEl.classList.add('collapsed');
+    });
+  } else {
+    schedEl.classList.remove('collapsed');
+    schedDaysEl.classList.add('anim-in');
+    onSelfAnimEnd(schedDaysEl, () => schedDaysEl.classList.remove('anim-in'));
+  }
+});
+
+function tvBadge(ch) {
+  const span = document.createElement('span');
+  span.className = `tv tv-${ch.toLowerCase()}`;
+  span.textContent = ch === 'TV4' ? 'TV4 Play' : 'SVT';
+  return span;
+}
+
+function gameRow(fx, scoreByPair) {
+  const li = document.createElement('li');
+  li.className = 'sg';
+
+  const time = document.createElement('span');
+  time.className = 'sg-time';
+  time.textContent = fx.time;
+
+  const title = document.createElement('span');
+  title.className = 'sg-title';
+  title.textContent = fx.home ? `${fx.home} – ${fx.away}` : fx.title;
+  if (fx.note) {
+    const note = document.createElement('span');
+    note.className = 'sg-note';
+    note.textContent = ` (${fx.note})`;
+    title.append(note);
+  }
+
+  const meta = document.createElement('span');
+  meta.className = 'sg-meta';
+  const score = fx.pair ? scoreByPair.get(fx.pair) : undefined;
+  if (score) {
+    const sc = document.createElement('span');
+    sc.className = 'sg-score';
+    sc.textContent = score;
+    meta.append(sc);
+  }
+  meta.append(tvBadge(fx.ch));
+
+  li.append(time, title, meta);
+  return li;
+}
+
+// Fyll (eller uppdatera) ett dagblock på plats – elementets identitet behålls,
+// så att en poll-uppdatering av resultat inte triggar någon in-animation.
+function fillDayContent(block, day, fixtures, scoreByPair, past) {
+  const head = document.createElement('div');
+  head.className = 'sd-head';
+  const label = document.createElement('span');
+  label.className = 'sd-label';
+  label.textContent = day.label;
+  head.append(label);
+  const sub = document.createElement('span');
+  if (day.tv4) {
+    // Passerade dagar: nedtonad badge och dåtid.
+    sub.className = past ? 'sd-sub sd-sub-past' : 'sd-sub';
+    sub.textContent = past
+      ? `${day.tv4} hade TV4 Play`
+      : `📺 ${day.tv4} har TV4 Play`;
+  } else {
+    sub.className = 'sd-sub sd-sub-svt';
+    sub.textContent = 'Endast SVT';
+  }
+  head.append(sub);
+
+  const list = document.createElement('ol');
+  list.className = 'sd-games';
+  list.append(...fixtures.map((fx) => gameRow(fx, scoreByPair)));
+
+  block.replaceChildren(head, list);
+}
+
+function makeDayBlock(dayIndex, scoreByPair, today) {
+  const block = document.createElement('div');
+  block.className = 'sd';
+  block.dataset.day = String(dayIndex);
+  fillDayContent(block, SCHED_DAYS[dayIndex], FIXTURES_BY_DAY[dayIndex],
+    scoreByPair, SCHED_DAYS[dayIndex].date < today);
+  return block;
+}
+
+// Grundvy: alla matcher igår, idag och imorgon (oavsett antal). "Visa fler"
+// utökar fönstrets bakre kant med DAYS_PER_CLICK matchdagar i taget. Faller
+// utanför turneringen tillbaka på de närmaste matchdagarna.
+function renderSchedule(scoreByPair) {
+  lastScoreByPair = scoreByPair;
+  if (SCHED_DAYS.length === 0) return;
+
+  const today = todayISO();
+  const windowDates = new Set([isoShift(today, -1), today, isoShift(today, 1)]);
+
+  let idxs = SCHED_DAYS
+    .map((d, i) => (windowDates.has(d.date) ? i : -1))
+    .filter((i) => i >= 0);
+  if (idxs.length === 0) {
+    const next = SCHED_DAYS.findIndex((d) => d.date >= today);
+    idxs = next === -1
+      ? SCHED_DAYS.map((_, i) => i).slice(-3)
+      : [next, next + 1, next + 2].filter((i) => i < SCHED_DAYS.length);
+  }
+
+  const startIdx = idxs[0];
+  const endIdx = Math.min(idxs[idxs.length - 1] + extraDays, SCHED_DAYS.length - 1);
+
+  const target = [];
+  for (let i = startIdx; i <= endIdx; i++) target.push(i);
+  const targetSet = new Set(target);
+  // Animera bara när listan faktiskt syns (annars instant – inga hängande
+  // animationend som aldrig avfyras i en dold container).
+  const visible = isDesktop() || !schedEl.classList.contains('collapsed');
+  const animate = schedReady && visible && !prefersReduced();
+
+  // Ta bort dagar som inte längre ska visas (animera ut).
+  for (const [di, el] of [...dayBlocks]) {
+    if (targetSet.has(di)) continue;
+    dayBlocks.delete(di);
+    if (animate) animateOut(el); else el.remove();
+  }
+
+  // Lägg till nya dagar (animera in) och uppdatera befintliga på plats.
+  let prevEl = null;
+  for (const di of target) {
+    let el = dayBlocks.get(di);
+    if (el) {
+      fillDayContent(el, SCHED_DAYS[di], FIXTURES_BY_DAY[di], scoreByPair, SCHED_DAYS[di].date < today);
+    } else {
+      el = makeDayBlock(di, scoreByPair, today);
+      dayBlocks.set(di, el);
+      schedDaysEl.insertBefore(el, prevEl ? prevEl.nextSibling : schedDaysEl.firstChild);
+      if (animate) animateIn(el);
+    }
+    prevEl = el;
+  }
+
+  schedMoreEl.hidden = endIdx >= SCHED_DAYS.length - 1;
+  schedLessEl.hidden = extraDays === 0;
+  schedReady = true;
 }
 
 const rowsByName = new Map();   // namn → li-element
@@ -217,7 +404,13 @@ function render(data) {
   for (const p of data.participants) lastTotals.set(p.name, p.total);
 
   progressEl.textContent = `${data.facit.playedMatches} av ${data.facit.totalMatches} gruppspelsmatcher spelade`;
-  renderPlayed(data.facit.results ?? []);
+  const scoreByPair = new Map(
+    (data.facit.results ?? []).map((m) => [
+      `${teamKey(m.home)}|${teamKey(m.away)}`,
+      `${m.homeGoals}–${m.awayGoals}`,
+    ]),
+  );
+  renderSchedule(scoreByPair);
   lastUpdatedAt = new Date(data.updatedAt);
   updatedAtEl.textContent = `Senast uppdaterad ${lastUpdatedAt.toLocaleTimeString('sv-SE')}`;
 
