@@ -216,7 +216,7 @@ function render(data) {
   flipReorder(ordered);
   for (const p of data.participants) lastTotals.set(p.name, p.total);
 
-  progressEl.textContent = `${data.facit.playedMatches} av ${data.facit.totalMatches} matcher spelade`;
+  progressEl.textContent = `${data.facit.playedMatches} av ${data.facit.totalMatches} gruppspelsmatcher spelade`;
   renderPlayed(data.facit.results ?? []);
   lastUpdatedAt = new Date(data.updatedAt);
   updatedAtEl.textContent = `Senast uppdaterad ${lastUpdatedAt.toLocaleTimeString('sv-SE')}`;
