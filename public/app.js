@@ -146,7 +146,7 @@ function gameRow(fx, scoreByPair) {
 
 // Fyll (eller uppdatera) ett dagblock på plats – elementets identitet behålls,
 // så att en poll-uppdatering av resultat inte triggar någon in-animation.
-function fillDayContent(block, day, fixtures, scoreByPair, past) {
+function fillDayContent(block, day, fixtures, scoreByPair, past, current) {
   const head = document.createElement('div');
   head.className = 'sd-head';
   const label = document.createElement('span');
@@ -155,11 +155,13 @@ function fillDayContent(block, day, fixtures, scoreByPair, past) {
   head.append(label);
   const sub = document.createElement('span');
   if (day.tv4) {
-    // Passerade dagar: nedtonad badge och dåtid.
-    sub.className = past ? 'sd-sub sd-sub-past' : 'sd-sub';
-    sub.textContent = past
-      ? `${day.tv4} hade TV4 Play`
-      : `📺 ${day.tv4} har TV4 Play`;
+    // Endast det pågående 2-dygnsblocket lyser starkt gult med 📺;
+    // passerade och kommande block tonas ned.
+    sub.className = current ? 'sd-sub' : 'sd-sub sd-sub-past';
+    const verb = past ? 'hade' : 'har';
+    sub.textContent = current
+      ? `📺 ${day.tv4} har TV4 Play`
+      : `${day.tv4} ${verb} TV4 Play`;
   } else {
     sub.className = 'sd-sub sd-sub-svt';
     sub.textContent = 'Endast SVT';
@@ -173,13 +175,32 @@ function fillDayContent(block, day, fixtures, scoreByPair, past) {
   block.replaceChildren(head, list);
 }
 
-function makeDayBlock(dayIndex, scoreByPair, today) {
+function makeDayBlock(dayIndex, scoreByPair, today, currentBlock) {
   const block = document.createElement('div');
   block.className = 'sd';
   block.dataset.day = String(dayIndex);
-  fillDayContent(block, SCHED_DAYS[dayIndex], FIXTURES_BY_DAY[dayIndex],
-    scoreByPair, SCHED_DAYS[dayIndex].date < today);
+  const day = SCHED_DAYS[dayIndex];
+  fillDayContent(block, day, FIXTURES_BY_DAY[dayIndex], scoreByPair,
+    day.date < today, currentBlock.has(day.date));
   return block;
+}
+
+// Det pågående TV4 Play-blocket: dagen som matchar today plus dess
+// intilliggande dagar med samma ägare (typiskt 2 dygn). Tom mängd om
+// dagens datum inte finns i schemat (vilodag).
+function currentTv4Block(today) {
+  const idx = SCHED_DAYS.findIndex((d) => d.date === today);
+  if (idx === -1) return new Set();
+  const dates = new Set([SCHED_DAYS[idx].date]);
+  const owner = SCHED_DAYS[idx].tv4;
+  if (!owner) return dates;
+  for (let i = idx + 1; i < SCHED_DAYS.length && SCHED_DAYS[i].tv4 === owner; i++) {
+    dates.add(SCHED_DAYS[i].date);
+  }
+  for (let i = idx - 1; i >= 0 && SCHED_DAYS[i].tv4 === owner; i--) {
+    dates.add(SCHED_DAYS[i].date);
+  }
+  return dates;
 }
 
 // Grundvy: alla matcher igår, idag och imorgon (oavsett antal). "Visa fler"
@@ -191,6 +212,7 @@ function renderSchedule(scoreByPair) {
 
   const today = todayISO();
   const windowDates = new Set([isoShift(today, -1), today, isoShift(today, 1)]);
+  const currentBlock = currentTv4Block(today);
 
   let idxs = SCHED_DAYS
     .map((d, i) => (windowDates.has(d.date) ? i : -1))
@@ -224,10 +246,12 @@ function renderSchedule(scoreByPair) {
   let prevEl = null;
   for (const di of target) {
     let el = dayBlocks.get(di);
+    const day = SCHED_DAYS[di];
     if (el) {
-      fillDayContent(el, SCHED_DAYS[di], FIXTURES_BY_DAY[di], scoreByPair, SCHED_DAYS[di].date < today);
+      fillDayContent(el, day, FIXTURES_BY_DAY[di], scoreByPair,
+        day.date < today, currentBlock.has(day.date));
     } else {
-      el = makeDayBlock(di, scoreByPair, today);
+      el = makeDayBlock(di, scoreByPair, today, currentBlock);
       dayBlocks.set(di, el);
       schedDaysEl.insertBefore(el, prevEl ? prevEl.nextSibling : schedDaysEl.firstChild);
       if (animate) animateIn(el);
