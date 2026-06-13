@@ -39,7 +39,11 @@
    (inte body) så att den täcker hela fönstret även när innehållet är
    kortare än skärmen. Korten ligger ovanpå med ljus/mörk yta. */
 html {
-  background:
+  /* Solid grön i botten som garanti: iOS overscroll-området visar
+     background-color (inte den fixerade gradient-bilden) och blir då
+     grönt i stället för svart. */
+  background-color: var(--pitch-deep);
+  background-image:
     repeating-linear-gradient(90deg,
       rgba(255, 255, 255, 0.05) 0 56px, transparent 56px 112px),
     linear-gradient(160deg, var(--pitch), var(--pitch-deep));
