@@ -1,89 +1,91 @@
-# VM-tipset 2026 – Live-ställning
+# VM-tipset 2026 – Live Standings
 
-Enkel, responsiv webapp som visar den aktuella ställningen i VM 2026-tipsspelet.
-Läser tips och facit från det publika Google-kalkylarket, räknar om poängen själv
-(portad Apps Script-logik) och auto-uppdaterar topplistan.
+A simple, responsive web app that shows the live standings of the FIFA World Cup 2026 betting pool ("VM-tipset"). It reads predictions and the answer key from a public Google Sheet, recomputes the points itself (ported Apps Script logic), and auto-updates the leaderboard.
 
-## Hur det funkar
+## How it works
 
-- **Servern** (Node + Express) hämtar kalkylarket via gviz-CSV på ett
-  bakgrundsintervall till en delad cache – oavsett antal besökare blir det bara
-  en ark-hämtning per intervall. `GET /api/standings` serverar det färdigräknade
-  svaret (med `Last-Modified`).
-- **Klienten** (ren HTML/CSS/JS, mobil först) pollar API:t var 5:e sekund och
-  uppdaterar tavlan mjukt – FLIP-animerad omsortering, ▲/▼ vid placeringsbyte,
-  poängblink vid ändring. Ljust/mörkt läge följer systemet.
-- **Facit i v1** är fliken `Resultat` i arket (bakom ett `ResultProvider`-
-  interface i `src/resultProvider.js`, så ett sport-API kan kopplas på senare).
+- **The server** (Node + Express) fetches the spreadsheet via gviz CSV on a
+  background interval into a shared cache — regardless of how many visitors are
+  connected, there's still only one sheet fetch per interval. `GET /api/standings`
+  serves the pre-computed response (with `Last-Modified`).
+- **The client** (plain HTML/CSS/JS, mobile-first) polls the API every 5 seconds
+  and updates the board smoothly — FLIP-animated reorder, ▲/▼ on rank changes,
+  a point flash on score changes. Light/dark mode follows the system.
+- **The answer key in v1** is the `Resultat` tab of the sheet (behind a
+  `ResultProvider` interface in `src/resultProvider.js`, so a sports API can be
+  swapped in later).
 
-### Poängregler
+### Scoring rules
 
-| Vad | Poäng |
+| What | Points |
 | --- | --- |
-| Gruppmatch: rätt utgång (1/X/2) | 3 p |
-| Gruppmatch: exakt målantal per lag | 1 p per lag (max 5 p/match) |
-| Lag vidare till 16-del/åttondel/kvart/semi/final | 5 p per rätt lag och rond |
-| VM-vinnare | 10 p |
+| Group match: correct outcome (1/X/2) | 3 p |
+| Group match: exact goal count per team | 1 p per team (max 5 p/match) |
+| Team advances to R32/R16/QF/SF/Final | 5 p per correct team and round |
+| World Cup winner | 10 p |
 
-Rangordning i grupptabeller (FIFA VM 2026): poäng → inbördes möten (poäng →
-målskillnad → gjorda mål) → total målskillnad → totalt gjorda mål →
-bokstavsordning. 32 lag vidare = 2 bästa per grupp + 8 bästa treorna; treor som
-inte kan särskiljas om sista platsen redovisas som **ej fastställda**.
+Group-stage tie-breakers (FIFA World Cup 2026): points → head-to-head (points →
+goal difference → goals scored) → overall goal difference → overall goals
+scored → alphabetical. 32 teams advance = top 2 per group + 8 best
+third-placed teams; third-placed teams that can't be separated for the last
+spot are reported as **undecided**.
 
-## Kom igång lokalt
+## Get started locally
 
 ```bash
 npm install
-cp .env.example .env        # justera vid behov
+cp .env.example .env        # adjust as needed
 SHEET_ID=<spreadsheet-id> npm start
-# eller: export $(grep -v '^#' .env | xargs) && npm start
+# or: export $(grep -v '^#' .env | xargs) && npm start
 ```
 
-Öppna http://localhost:3000.
+Open http://localhost:3000.
 
 ```bash
-npm test                    # enhetstester (node:test, inga extra beroenden)
+npm test                    # unit tests (node:test, no extra deps)
 ```
 
-## Miljövariabler
+## Environment variables
 
-| Variabel | Default | Beskrivning |
+| Variable | Default | Description |
 | --- | --- | --- |
-| `SHEET_ID` | – (krävs) | Google Spreadsheet-ID (publikt ark) |
-| `PORT` | `3000` | Sätts av Render i produktion |
-| `SHEET_REFRESH_SECONDS` | `15` | Intervall för hämtning av facit (`Resultat`) + deltagarlista |
-| `CLIENT_POLL_SECONDS` | `5` | Hur ofta klienten pollar `/api/standings` |
-| `PREDICTIONS_REFRESH_SECONDS` | `300` | Intervall för omhämtning av deltagarflikarna (tipsen är låsta efter turneringsstart, så detta kan vara glest) |
+| `SHEET_ID` | – (required) | Google Spreadsheet ID (public sheet) |
+| `PORT` | `3000` | Set by Render in production |
+| `SHEET_REFRESH_SECONDS` | `15` | Interval for fetching the answer key (`Resultat`) + participant list |
+| `CLIENT_POLL_SECONDS` | `5` | How often the client polls `/api/standings` |
+| `PREDICTIONS_REFRESH_SECONDS` | `300` | Interval for re-fetching the participant tabs (predictions are locked once the tournament starts, so this can be sparse) |
 
-Inga hemligheter behövs – arket är publikt läsbart.
+No secrets needed — the sheet is publicly readable.
 
-## Deploy på Render
+## Deploy on Render
 
-1. Pusha repot till GitHub/GitLab.
-2. På [render.com](https://render.com): **New → Blueprint** och peka på repot –
-   `render.yaml` sätter upp web-servicen och env-variablerna.
-   (Eller **New → Web Service** manuellt: runtime Node, build `npm ci`,
-   start `npm start`, instanstyp Starter, samt env-variablerna ovan.)
-3. Klart. Instanstypen `starter` är alltid igång (inga kallstarter);
-   `free` fungerar också men spinner ner vid inaktivitet.
+1. Push the repo to GitHub/GitLab.
+2. On [render.com](https://render.com): **New → Blueprint** and point it at the
+   repo — `render.yaml` sets up the web service and env vars.
+   (Or **New → Web Service** manually: runtime Node, build `npm ci`,
+   start `npm start`, instance type Starter, plus the env vars above.)
+3. Done. Instance type `starter` is always on (no cold starts); `free` also
+   works but spins down when idle.
 
-## Kalkylarkets layout (förväntad)
+## Expected spreadsheet layout
 
-- Flik `Ställning`: deltagarnamn i kolumn A från rad 2 (läses dynamiskt).
-- Flik `Resultat` + en flik per deltagare, identisk layout:
-  - Rad 1–96: 12 grupper i 8-radersblock (rubrik, 6 matchrader, tomrad).
-    Kol B = `"Hemmalag - Bortalag"`, kol C/E = mål (tomt = ospelad/otippad).
-  - Slutspelslistor i kol B: rad 98–129 (16-delsfinal), 131–146 (åttondel),
-    148–155 (kvart), 157–160 (semi), 162–163 (final), 165 (VM-vinnare).
+- Tab `Ställning`: participant names in column A from row 2 (read dynamically).
+- Tab `Resultat` + one tab per participant, identical layout:
+  - Rows 1–96: 12 groups in 8-row blocks (header, 6 match rows, blank row).
+    Col B = `"Home - Away"`, cols C/E = goals (empty = unplayed/unpredicted).
+  - Knockout lists in col B: rows 98–129 (Round of 32), 131–146 (Round of 16),
+    148–155 (quarterfinals), 157–160 (semifinals), 162–163 (final), 165
+    (World Cup winner).
 
-**OBS (gviz-egenhet):** gviz-CSV typar kolumner per majoritet och tappar rader
-vars celler nullas (t.ex. textrubriker i datumkolumnen A) – även med `range`.
-Därför hämtas varje flik i två positionssäkra delar: matchraderna `A1:E96`
-(exakt 72 rader överlever, grupp = radindex/6) och slutspelet `A98:B165`
-(sektionsbyte på etiketterna i kolumn A). Se `docs/superpowers/specs/`.
+**Note (gviz quirk):** gviz CSV types columns by majority and drops rows whose
+cells go null (e.g. text headers in the date column A) — even when you pass
+`range`. That's why each tab is fetched in two positionally-safe parts:
+the match rows `A1:E96` (exactly 72 rows survive, group = row-index / 6) and
+the knockouts `A98:B165` (section break on the labels in column A). See
+`docs/superpowers/specs/`.
 
-## Framtida tillägg (förberett, ej byggt)
+## Future additions (prepared, not built)
 
-- Externt fotbolls-API som facitkälla bakom samma `ResultProvider`-interface
-  (+ lagnamnsmappning engelska → svenska).
-- Historik/graf över ställningens utveckling.
+- External football API as the results source behind the same `ResultProvider`
+  interface (+ team-name mapping English → Swedish).
+- History/graph of how the standings have evolved.
