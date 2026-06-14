@@ -107,7 +107,7 @@ schedShowEl.addEventListener('click', () => {
 function tvBadge(ch) {
   const span = document.createElement('span');
   span.className = `tv tv-${ch.toLowerCase()}`;
-  span.textContent = ch === 'TV4' ? 'TV4 Play' : 'SVT';
+  span.textContent = ch === 'TV4' ? 'TV4' : 'SVT';
   return span;
 }
 
