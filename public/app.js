@@ -344,9 +344,10 @@ function makeDayBlock(dayIndex, scoreByPair, today, currentBlock) {
   return block;
 }
 
-// Det pågående TV4 Play-blocket: dagen som matchar today plus dess
-// intilliggande dagar med samma ägare (typiskt 2 dygn). Tom mängd om
-// dagens datum inte finns i schemat (vilodag).
+// Det pågående TV4 Play-blocket: idag plus efterföljande dagar med samma
+// ägare (en ägarperiod kan spänna flera dygn). Passerade dagar räknas aldrig
+// som pågående – de tonas ned och visas i dåtid. Tom mängd om dagens datum
+// inte finns i schemat (vilodag).
 function currentTv4Block(today) {
   const idx = SCHED_DAYS.findIndex((d) => d.date === today);
   if (idx === -1) return new Set();
@@ -354,9 +355,6 @@ function currentTv4Block(today) {
   const owner = SCHED_DAYS[idx].tv4;
   if (!owner) return dates;
   for (let i = idx + 1; i < SCHED_DAYS.length && SCHED_DAYS[i].tv4 === owner; i++) {
-    dates.add(SCHED_DAYS[i].date);
-  }
-  for (let i = idx - 1; i >= 0 && SCHED_DAYS[i].tv4 === owner; i--) {
     dates.add(SCHED_DAYS[i].date);
   }
   return dates;
