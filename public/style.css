@@ -288,9 +288,10 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-weight: 700;
 }
 
-.sg-note { opacity: 0.7; font-style: italic; }
+.sg-note { opacity: 0.7; font-style: italic; font-weight: 400; }
 
 .sg-meta {
   display: flex;

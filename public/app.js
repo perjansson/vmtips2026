@@ -111,13 +111,26 @@ function tvBadge(ch) {
   return span;
 }
 
+// Schemat lagras i svensk tid. Är browsern på finsk tid (Helsingfors/Åland)
+// visar vi finsk tid + finsk flagga; annars svensk tid + svensk flagga.
+// Båda zonerna är på sommartid under hela turneringen, så +1 h räcker.
+const LOCAL_TZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
+const IN_FINLAND = LOCAL_TZ === 'Europe/Helsinki' || LOCAL_TZ === 'Europe/Mariehamn';
+const TIME_FLAG = IN_FINLAND ? '🇫🇮' : '🇸🇪';
+
+function localTime(hhmm) {
+  if (!IN_FINLAND) return hhmm;
+  const [h, m] = hhmm.split(':').map(Number);
+  return `${String((h + 1) % 24).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
 function gameRow(fx, scoreByPair) {
   const li = document.createElement('li');
   li.className = 'sg';
 
   const time = document.createElement('span');
   time.className = 'sg-time';
-  time.textContent = fx.time;
+  time.textContent = `${TIME_FLAG} ${localTime(fx.time)}`;
 
   const title = document.createElement('span');
   title.className = 'sg-title';
