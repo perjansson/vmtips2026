@@ -267,15 +267,100 @@ body {
   gap: 0.1rem;
 }
 
+/* En .sg är en match-rad + (för gruppmatcher) en expanderbar tipspanel. */
+.sg { display: block; }
+
 /* Grid: tid | titel (krymper med ellips) | resultat+TV. 1fr-kolumnen
    absorberar bredden så raden aldrig spiller över skärmkanten. */
-.sg {
+.sg-row {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: baseline;
   column-gap: 0.5rem;
   font-size: 0.84rem;
   padding: 0.12rem 0;
+  width: 100%;
+}
+
+/* Klickbara rader (gruppmatcher) blir <button>. Behåll oförändrat utseende
+   men lägg till hover/focus-affordance. */
+button.sg-row {
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 0.3rem;
+}
+
+button.sg-row:hover { background: rgba(255, 255, 255, 0.08); }
+
+button.sg-row:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 1px;
+}
+
+/* Tipspanel: collapsible via grid-template-rows 0fr ↔ 1fr.
+   Inner-elementet clippas av overflow:hidden så övergången är mjuk. */
+.sg-tips {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.sg-tips[data-open="true"] { grid-template-rows: 1fr; }
+
+.sg-tips-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.sg-tips[data-open="true"] .sg-tips-inner {
+  padding: 0.3rem 0 0.45rem;
+}
+
+.sg-tips-h {
+  margin: 0.35rem 0 0.15rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.sg-tips-h:first-child { margin-top: 0; }
+
+.sg-tips-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.7rem;
+  font-size: 0.78rem;
+}
+
+.sg-tips-list li {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  white-space: nowrap;
+}
+
+.sg-tips-score {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+.sg-tips-empty {
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+  opacity: 0.7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sg-tips { transition: none; }
 }
 
 .sg-time {

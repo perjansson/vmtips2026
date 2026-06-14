@@ -111,6 +111,108 @@ function tvBadge(ch) {
   return span;
 }
 
+// --- Allas tips per match -----------------------------------------------
+// Hämtas en gång efter första målning (tipsen är låsta efter turneringsstart)
+// och cachas. Klick på en match expanderar en panel med allas tips,
+// grupperade på utfall. Bara en panel öppen åt gången.
+
+let tipsByPair = new Map();
+let tipsLoaded = false;
+let tipsPromise = null;
+let openPair = null;
+
+async function ensureTips() {
+  if (tipsLoaded) return;
+  if (!tipsPromise) {
+    tipsPromise = fetch('/api/match-tips', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((d) => {
+        tipsByPair = new Map(Object.entries(d.tipsByPair ?? {}));
+        tipsLoaded = true;
+      })
+      .catch((err) => { console.error('match-tips:', err.message); })
+      .finally(() => { tipsPromise = null; });
+  }
+  return tipsPromise;
+}
+
+// Säkert DOM-id från pair-nyckeln (lagnamn kan innehålla mellanslag, accenter, |).
+const pairId = (p) => 'tips-' + p.replace(/[^a-z0-9]/gi, '_');
+
+function renderTipsInto(inner, fx) {
+  const tips = tipsByPair.get(fx.pair) ?? [];
+  inner.replaceChildren();
+  if (tips.length === 0) {
+    const p = document.createElement('p');
+    p.className = 'sg-tips-empty';
+    p.textContent = tipsLoaded ? 'Inga tips än.' : 'Hämtar tips…';
+    inner.append(p);
+    return;
+  }
+  const homeWin = [], draw = [], awayWin = [];
+  for (const t of tips) {
+    if (t.h > t.a) homeWin.push(t);
+    else if (t.h < t.a) awayWin.push(t);
+    else draw.push(t);
+  }
+  const addGroup = (label, list) => {
+    if (list.length === 0) return;
+    const h = document.createElement('h4');
+    h.className = 'sg-tips-h';
+    h.textContent = `${label} (${list.length})`;
+    inner.append(h);
+    const ul = document.createElement('ul');
+    ul.className = 'sg-tips-list';
+    for (const t of list) {
+      const item = document.createElement('li');
+      const nm = document.createElement('span');
+      nm.textContent = t.name;
+      const sc = document.createElement('span');
+      sc.className = 'sg-tips-score';
+      sc.textContent = `${t.h}–${t.a}`;
+      item.append(nm, sc);
+      ul.append(item);
+    }
+    inner.append(ul);
+  };
+  addGroup(`Seger för ${fx.home}`, homeWin);
+  addGroup('Oavgjort', draw);
+  addGroup(`Seger för ${fx.away}`, awayWin);
+}
+
+function closeOpenTips() {
+  if (!openPair) return;
+  const panel = document.getElementById(pairId(openPair));
+  if (panel) {
+    panel.dataset.open = 'false';
+    const row = panel.previousElementSibling;
+    if (row) row.setAttribute('aria-expanded', 'false');
+  }
+  openPair = null;
+}
+
+async function toggleTips(fx, row, panel, inner) {
+  if (openPair === fx.pair) { closeOpenTips(); return; }
+  closeOpenTips();
+  // Optimistiskt öppna direkt så klicket känns instant – panelen visar
+  // "Hämtar tips…" om prefetchen inte hunnit klart.
+  renderTipsInto(inner, fx);
+  panel.dataset.open = 'true';
+  row.setAttribute('aria-expanded', 'true');
+  openPair = fx.pair;
+  if (!tipsLoaded) {
+    await ensureTips();
+    if (openPair === fx.pair) renderTipsInto(inner, fx);
+  }
+}
+
+// Starta prefetchen så snart som möjligt utan att blockera första målningen.
+if ('requestIdleCallback' in window) {
+  requestIdleCallback(() => ensureTips());
+} else {
+  setTimeout(() => ensureTips(), 0);
+}
+
 // Schemat lagras i svensk tid. Är browsern på finsk tid (Helsingfors/Åland)
 // visar vi finsk tid + finsk flagga; annars svensk tid + svensk flagga.
 // Båda zonerna är på sommartid under hela turneringen, så +1 h räcker.
@@ -127,6 +229,12 @@ function localTime(hhmm) {
 function gameRow(fx, scoreByPair) {
   const li = document.createElement('li');
   li.className = 'sg';
+
+  // Gruppmatcher (med pair) är klickbara — bygg som <button>. Slutspels-
+  // platshållare (bara title) är icke-interaktiva div:ar.
+  const row = document.createElement(fx.pair ? 'button' : 'div');
+  row.className = 'sg-row';
+  if (fx.pair) row.type = 'button';
 
   const time = document.createElement('span');
   time.className = 'sg-time';
@@ -153,13 +261,51 @@ function gameRow(fx, scoreByPair) {
   }
   meta.append(tvBadge(fx.ch));
 
-  li.append(time, title, meta);
+  row.append(time, title, meta);
+  li.append(row);
+
+  if (fx.pair) {
+    const panel = document.createElement('div');
+    panel.className = 'sg-tips';
+    panel.id = pairId(fx.pair);
+    row.setAttribute('aria-controls', panel.id);
+
+    const inner = document.createElement('div');
+    inner.className = 'sg-tips-inner';
+    panel.append(inner);
+
+    // Bevara öppet tillstånd över re-renders (t.ex. när scores ändras).
+    // data-open sätts innan panelen läggs i DOM så ingen övergång triggas.
+    const isOpen = fx.pair === openPair;
+    panel.dataset.open = isOpen ? 'true' : 'false';
+    row.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    if (isOpen) renderTipsInto(inner, fx);
+
+    row.addEventListener('click', () => toggleTips(fx, row, panel, inner));
+    li.append(panel);
+  }
+
   return li;
+}
+
+// Signatur över allt som påverkar dagens DOM. Används för att hoppa över
+// rebuild när inget förändrats (poll var 5:e sekund) – då bevaras också
+// en öppen tipspanel utan extra logik.
+function daySig(day, fixtures, scoreByPair, past, current) {
+  let s = `${day.label}|${day.tv4 ?? ''}|${past ? 1 : 0}|${current ? 1 : 0}`;
+  for (const fx of fixtures) {
+    const score = fx.pair ? (scoreByPair.get(fx.pair) ?? '') : '';
+    s += `\n${fx.time}|${fx.pair ?? fx.title ?? ''}|${score}|${fx.note ?? ''}|${fx.ch}`;
+  }
+  return s;
 }
 
 // Fyll (eller uppdatera) ett dagblock på plats – elementets identitet behålls,
 // så att en poll-uppdatering av resultat inte triggar någon in-animation.
 function fillDayContent(block, day, fixtures, scoreByPair, past, current) {
+  const sig = daySig(day, fixtures, scoreByPair, past, current);
+  if (block._sig === sig) return;
+  block._sig = sig;
   const head = document.createElement('div');
   head.className = 'sd-head';
   const label = document.createElement('span');

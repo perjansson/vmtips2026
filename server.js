@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { fetchTab, fetchParticipants } from './src/sheetClient.js';
 import { createSheetResultProvider } from './src/resultProvider.js';
 import { computeStandings } from './src/standings.js';
+import { matchPairKey } from './src/parse.js';
 
 const config = {
   sheetId: process.env.SHEET_ID,
@@ -28,8 +29,29 @@ const state = {
   predictionsByName: new Map(),
   facit: null,
   payload: null, // färdigt JSON-svar för /api/standings
+  tipsByPair: null, // alla deltagares gruppmatchstips, grupperat på pair-nyckeln
   updatedAt: null,
 };
+
+// Plattat aggregat över alla deltagares gruppmatchstips, så headerns
+// matchschema kan expandera och visa "allas tips" utan att blåsa upp
+// /api/standings-payloaden (som bakas in i HTML för första målning).
+function buildTipsByPair() {
+  const byPair = new Map();
+  for (const [name, predictions] of state.predictionsByName) {
+    for (const m of predictions.matches) {
+      if (m.homeGoals === null || m.awayGoals === null) continue;
+      const key = matchPairKey(m);
+      let list = byPair.get(key);
+      if (!list) byPair.set(key, list = []);
+      list.push({ name, h: m.homeGoals, a: m.awayGoals });
+    }
+  }
+  for (const list of byPair.values()) {
+    list.sort((x, y) => x.name.localeCompare(y.name, 'sv'));
+  }
+  return Object.fromEntries(byPair);
+}
 
 function recompute() {
   if (!state.facit) return;
@@ -44,6 +66,7 @@ function recompute() {
     clientPollSeconds: config.clientPollSeconds,
     ...standings,
   };
+  state.tipsByPair = buildTipsByPair();
 }
 
 // Facit + deltagarlista, varje SHEET_REFRESH_SECONDS. Fel → behåll cachen.
@@ -93,6 +116,22 @@ app.get('/api/standings', (req, res) => {
   res.set('Cache-Control', 'no-cache');
   res.set('Last-Modified', state.updatedAt.toUTCString());
   res.json(state.payload);
+});
+
+// Allas tips per gruppmatch. Klienten prefetchar detta efter första målning
+// och cachar lokalt; eftersom tipsen är låsta efter turneringsstart räcker
+// en hämtning per sidladdning.
+app.get('/api/match-tips', (req, res) => {
+  if (!state.tipsByPair) {
+    res.status(503).json({ error: 'Tipsen är inte laddade ännu, försök strax igen.' });
+    return;
+  }
+  res.set('Cache-Control', 'no-cache');
+  res.set('Last-Modified', state.updatedAt.toUTCString());
+  res.json({
+    updatedAt: state.updatedAt.toISOString(),
+    tipsByPair: state.tipsByPair,
+  });
 });
 
 const publicDir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'public');
