@@ -188,7 +188,7 @@ function consensusMeter(fx, total, h, d, a) {
   wrap.className = 'sg-consensus';
   const head = document.createElement('div');
   head.className = 'sg-consensus-h';
-  head.textContent = 'Poolens fördelning';
+  head.textContent = 'Tipsfördelning';
   wrap.append(head);
 
   const pct = (n) => (total > 0 ? Math.round((n / total) * 100) : 0);
