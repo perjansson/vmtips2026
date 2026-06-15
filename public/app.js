@@ -610,7 +610,6 @@ function renderTwins(li, name) {
   if (!tipsLoaded) { section.hidden = true; return; }
   const twins = findTwins(name);
   if (twins.length === 0) { section.hidden = true; return; }
-  const max = twins[0].count;
   const ul = section.querySelector('.twin-list');
   ul.replaceChildren(...twins.map((t) => {
     const item = document.createElement('li');
@@ -622,7 +621,7 @@ function renderTwins(li, name) {
     track.className = 'twin-track';
     const fill = document.createElement('span');
     fill.className = 'twin-fill';
-    fill.style.width = `${max > 0 ? Math.round((t.count / max) * 100) : 0}%`;
+    fill.style.width = `${Math.round((t.count / TOTAL_GROUP_MATCHES) * 100)}%`;
     track.append(fill);
     const val = document.createElement('span');
     val.className = 'twin-val';

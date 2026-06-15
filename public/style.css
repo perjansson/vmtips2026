@@ -709,6 +709,12 @@ main {
 
 .twin-section { margin-top: 0.8rem; }
 
+.twin-caption {
+  margin: -0.1rem 0 0.35rem;
+  font-size: 0.74rem;
+  color: var(--ink-soft);
+}
+
 .twin-list {
   list-style: none;
   margin: 0;
