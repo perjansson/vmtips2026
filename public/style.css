@@ -901,6 +901,8 @@ main {
   text-align: center;
 }
 
+.foot p { margin: 0.15rem 0; }
+
 @media (min-width: 600px) {
   .row-button { padding: 0.85rem 1.1rem; }
   .total-value { font-size: 2rem; }
