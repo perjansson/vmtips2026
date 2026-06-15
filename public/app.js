@@ -139,6 +139,40 @@ async function ensureTips() {
 // Säkert DOM-id från pair-nyckeln (lagnamn kan innehålla mellanslag, accenter, |).
 const pairId = (p) => 'tips-' + p.replace(/[^a-z0-9]/gi, '_');
 
+// Kontroversmätare: stapelfördelning 1/X/2 i poolen för den aktuella matchen.
+function consensusMeter(fx, total, h, d, a) {
+  const wrap = document.createElement('div');
+  wrap.className = 'sg-consensus';
+  const head = document.createElement('div');
+  head.className = 'sg-consensus-h';
+  head.textContent = 'Poolens fördelning';
+  wrap.append(head);
+
+  const pct = (n) => (total > 0 ? Math.round((n / total) * 100) : 0);
+  const bar = (label, count, outcome) => {
+    const row = document.createElement('div');
+    row.className = 'sg-consensus-bar';
+    row.dataset.outcome = outcome;
+    const lbl = document.createElement('span');
+    lbl.className = 'sg-consensus-label';
+    lbl.textContent = label;
+    const track = document.createElement('span');
+    track.className = 'sg-consensus-track';
+    const fill = document.createElement('span');
+    fill.className = 'sg-consensus-fill';
+    fill.style.width = `${pct(count)}%`;
+    track.append(fill);
+    const val = document.createElement('span');
+    val.className = 'sg-consensus-val';
+    val.textContent = `${pct(count)}% (${count})`;
+    row.append(lbl, track, val);
+    return row;
+  };
+
+  wrap.append(bar(fx.home, h, 'home'), bar('Oavgjort', d, 'draw'), bar(fx.away, a, 'away'));
+  return wrap;
+}
+
 function renderTipsInto(inner, fx) {
   const tips = tipsByPair.get(fx.pair) ?? [];
   inner.replaceChildren();
@@ -155,6 +189,7 @@ function renderTipsInto(inner, fx) {
     else if (t.h < t.a) awayWin.push(t);
     else draw.push(t);
   }
+  inner.append(consensusMeter(fx, tips.length, homeWin.length, draw.length, awayWin.length));
   const addGroup = (label, list) => {
     if (list.length === 0) return;
     const h = document.createElement('h4');
