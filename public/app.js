@@ -180,7 +180,9 @@ function findTwins(name) {
 // Säkert DOM-id från pair-nyckeln (lagnamn kan innehålla mellanslag, accenter, |).
 const pairId = (p) => 'tips-' + p.replace(/[^a-z0-9]/gi, '_');
 
-// Kontroversmätare: stapelfördelning 1/X/2 i poolen för den aktuella matchen.
+// Kontroversmätare: en enda stackad stapel med tre färgkodade segment
+// (hem/oavgjort/borta) + en legend under. En enbart-yellow stapel = stark
+// konsensus; tre likadana segment = poolen är splittrad.
 function consensusMeter(fx, total, h, d, a) {
   const wrap = document.createElement('div');
   wrap.className = 'sg-consensus';
@@ -190,27 +192,37 @@ function consensusMeter(fx, total, h, d, a) {
   wrap.append(head);
 
   const pct = (n) => (total > 0 ? Math.round((n / total) * 100) : 0);
-  const bar = (label, count, outcome) => {
-    const row = document.createElement('div');
-    row.className = 'sg-consensus-bar';
-    row.dataset.outcome = outcome;
-    const lbl = document.createElement('span');
-    lbl.className = 'sg-consensus-label';
-    lbl.textContent = label;
-    const track = document.createElement('span');
-    track.className = 'sg-consensus-track';
-    const fill = document.createElement('span');
-    fill.className = 'sg-consensus-fill';
-    fill.style.width = `${pct(count)}%`;
-    track.append(fill);
-    const val = document.createElement('span');
-    val.className = 'sg-consensus-val';
-    val.textContent = `${pct(count)}% (${count})`;
-    row.append(lbl, track, val);
-    return row;
+  const stack = document.createElement('div');
+  stack.className = 'sg-stack';
+  const segment = (outcome, count) => {
+    const s = document.createElement('span');
+    s.className = 'sg-stack-seg';
+    s.dataset.outcome = outcome;
+    s.style.width = `${pct(count)}%`;
+    return s;
   };
+  stack.append(segment('home', h), segment('draw', d), segment('away', a));
+  wrap.append(stack);
 
-  wrap.append(bar(fx.home, h, 'home'), bar('Oavgjort', d, 'draw'), bar(fx.away, a, 'away'));
+  const legend = document.createElement('div');
+  legend.className = 'sg-stack-legend';
+  const legendItem = (outcome, label, count) => {
+    const it = document.createElement('span');
+    it.className = 'sg-stack-legend-item';
+    const sw = document.createElement('span');
+    sw.className = 'sg-stack-legend-swatch';
+    sw.dataset.outcome = outcome;
+    const tx = document.createElement('span');
+    tx.textContent = `${label} ${pct(count)}% (${count})`;
+    it.append(sw, tx);
+    return it;
+  };
+  legend.append(
+    legendItem('home', fx.home, h),
+    legendItem('draw', 'Oavgjort', d),
+    legendItem('away', fx.away, a),
+  );
+  wrap.append(legend);
   return wrap;
 }
 

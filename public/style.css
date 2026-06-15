@@ -320,11 +320,12 @@ button.sg-row:focus-visible {
   padding: 0.3rem 0 0.45rem;
 }
 
-/* Kontroversmätare högst upp i tipspanelen: 1/X/2-fördelning som tre barer. */
+/* Kontroversmätare högst upp i tipspanelen: en stackad stapel med tre
+   färgkodade segment + legend. Färgerna delas mellan segment och swatch. */
 .sg-consensus {
   display: grid;
-  gap: 0.2rem;
-  margin-bottom: 0.5rem;
+  gap: 0.3rem;
+  margin-bottom: 0.55rem;
 }
 
 .sg-consensus-h {
@@ -332,52 +333,55 @@ button.sg-row:focus-visible {
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  margin-bottom: 0.15rem;
 }
 
-.sg-consensus-bar {
-  display: grid;
-  grid-template-columns: minmax(0, 6.5rem) minmax(2rem, 1fr) auto;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.74rem;
-}
-
-.sg-consensus-label {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-weight: 600;
-}
-
-.sg-consensus-track {
-  height: 0.42rem;
+.sg-stack {
+  display: flex;
+  width: 100%;
+  height: 0.55rem;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
   overflow: hidden;
+  background: rgba(255, 255, 255, 0.1);
 }
 
-.sg-consensus-fill {
-  display: block;
+.sg-stack-seg {
   height: 100%;
-  border-radius: 999px;
-  background: rgba(255, 210, 63, 0.85);
   transition: width 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.sg-consensus-bar[data-outcome="draw"] .sg-consensus-fill {
-  background: rgba(255, 255, 255, 0.55);
+.sg-stack-seg[data-outcome="home"],
+.sg-stack-legend-swatch[data-outcome="home"] { background: #ffd23f; }
+
+.sg-stack-seg[data-outcome="draw"],
+.sg-stack-legend-swatch[data-outcome="draw"] { background: rgba(255, 255, 255, 0.55); }
+
+.sg-stack-seg[data-outcome="away"],
+.sg-stack-legend-swatch[data-outcome="away"] { background: #ff8a5b; }
+
+.sg-stack-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.8rem;
+  font-size: 0.74rem;
 }
 
-.sg-consensus-val {
+.sg-stack-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  opacity: 0.85;
-  white-space: nowrap;
+}
+
+.sg-stack-legend-swatch {
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  flex: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sg-consensus-fill { transition: none; }
+  .sg-stack-seg { transition: none; }
 }
 
 .sg-tips-h {
