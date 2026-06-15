@@ -753,6 +753,88 @@ main {
   .match-figures .pts { color: var(--grass); }
 }
 
+/* ---- VM-vinnar-konsensus (kort under topplistan) ---- */
+
+.winner-consensus {
+  margin-top: 1.1rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 0.85rem;
+  box-shadow: var(--shadow);
+  padding: 0.8rem 0.9rem 0.85rem;
+}
+
+.winner-consensus h2 {
+  margin: 0 0 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.winner-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.winner-row {
+  display: grid;
+  grid-template-columns: minmax(0, 7rem) minmax(2rem, 1fr) auto;
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 0.55rem;
+  row-gap: 0.15rem;
+  font-size: 0.84rem;
+}
+
+.winner-team {
+  grid-column: 1;
+  grid-row: 1;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.winner-track {
+  grid-column: 2;
+  grid-row: 1;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.winner-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--gold);
+  transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.winner-count {
+  grid-column: 3;
+  grid-row: 1;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.winner-names {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  font-size: 0.74rem;
+  color: var(--ink-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .winner-fill { transition: none; }
+}
+
 /* ---- Sidfot ---- */
 
 .foot {

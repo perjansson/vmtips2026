@@ -660,6 +660,48 @@ function renderRow(li, p, data) {
   renderDetail(li, p, data.facit.winner);
 }
 
+// VM-vinnar-konsensus: aggregera deltagarnas vinnar-tips och visa som
+// sorterad stapellista. Datan finns redan i /api/standings → ingen extra
+// hämtning, ingen påverkan på första målning.
+function renderWinnerConsensus(participants) {
+  const section = document.getElementById('winner-consensus');
+  if (!section) return;
+  const byTeam = new Map();
+  for (const p of participants) {
+    if (!p.winnerPick) continue;
+    let pickers = byTeam.get(p.winnerPick);
+    if (!pickers) byTeam.set(p.winnerPick, pickers = []);
+    pickers.push(p.name);
+  }
+  if (byTeam.size === 0) { section.hidden = true; return; }
+  const teams = [...byTeam.entries()]
+    .sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0], 'sv'));
+  const max = teams[0][1].length;
+  const list = section.querySelector('.winner-list');
+  list.replaceChildren(...teams.map(([team, pickers]) => {
+    const li = document.createElement('li');
+    li.className = 'winner-row';
+    const tn = document.createElement('span');
+    tn.className = 'winner-team';
+    tn.textContent = team;
+    const track = document.createElement('span');
+    track.className = 'winner-track';
+    const fill = document.createElement('span');
+    fill.className = 'winner-fill';
+    fill.style.width = `${Math.round((pickers.length / max) * 100)}%`;
+    track.append(fill);
+    const cnt = document.createElement('span');
+    cnt.className = 'winner-count';
+    cnt.textContent = String(pickers.length);
+    const names = document.createElement('span');
+    names.className = 'winner-names';
+    names.textContent = pickers.join(' · ');
+    li.append(tn, track, cnt, names);
+    return li;
+  }));
+  section.hidden = false;
+}
+
 function flipReorder(orderedRows) {
   const before = new Map(
     [...board.children].map((el) => [el, el.getBoundingClientRect().top]),
@@ -690,6 +732,8 @@ function render(data) {
   });
   flipReorder(ordered);
   for (const p of data.participants) lastTotals.set(p.name, p.total);
+
+  renderWinnerConsensus(data.participants);
 
   progressEl.textContent = `${data.facit.playedMatches} av ${data.facit.totalMatches} gruppspelsmatcher spelade`;
   const scoreByPair = new Map(
