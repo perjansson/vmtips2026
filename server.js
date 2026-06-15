@@ -1,11 +1,12 @@
 import express from 'express';
 import path from 'node:path';
+import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { fetchTab, fetchParticipants } from './src/sheetClient.js';
 import { createSheetResultProvider } from './src/resultProvider.js';
 import { computeStandings } from './src/standings.js';
-import { matchPairKey } from './src/parse.js';
+import { matchPairKey, teamKey } from './src/parse.js';
 
 const config = {
   sheetId: process.env.SHEET_ID,
@@ -58,20 +59,48 @@ function buildTipsByPair() {
   return Object.fromEntries(byPair);
 }
 
-// Placeringar "innan senast spelade match" – beräknas från samma facit
-// genom att tillfälligt sätta den senaste matchens mål till null och köra
-// om computeStandings. Robust över omstarter (ingen snapshot behövs) och
-// kostnaden är försumbar: en till körning av computeStandings per recompute,
-// dvs O(deltagare × matcher) – mikrosekunder för rimliga storlekar.
-function buildPrevRanksByName() {
+// Avsparkstider från det statiska schemat (public/schedule.js) så vi kan
+// sortera spelade matcher kronologiskt – bladets radordning följer grupp
+// (A→L), inte tid, så tre matcher samma dag kommer i fel ordning där.
+const kickoffByPair = new Map();
+try {
+  const code = readFileSync(
+    path.join(path.dirname(fileURLToPath(import.meta.url)), 'public', 'schedule.js'),
+    'utf8',
+  );
+  const sandbox = { window: {} };
+  vm.runInNewContext(code, sandbox);
+  for (const day of sandbox.window.SCHEDULE ?? []) {
+    for (const g of day.games ?? []) {
+      if (!g.home) continue;
+      kickoffByPair.set(
+        `${teamKey(g.home)}|${teamKey(g.away)}`,
+        `${day.date} ${g.time}`,
+      );
+    }
+  }
+} catch (err) {
+  console.error(`Kunde inte läsa schedule.js för avsparkstider: ${err.message}`);
+}
+
+// State "innan senast spelade match" – plocka senaste match efter avsparkstid
+// (ej bladets radordning) och kör om computeStandings med dess mål satta till
+// null. Returnerar { rank, total } per namn så recompute() kan jämföra både
+// rangordning och poäng. Kostnad: en till körning av computeStandings per
+// recompute – mikrosekunder för rimliga storlekar.
+function buildPrevStateByName() {
   if (!state.facit) return new Map();
   const played = state.facit.matches
-    .map((m, i) => ({ m, i }))
+    .map((m, i) => ({
+      m,
+      i,
+      ts: kickoffByPair.get(matchPairKey(m)) ?? `${m.date} 99:99`,
+    }))
     .filter(({ m }) => m.homeGoals !== null && m.awayGoals !== null);
   if (played.length === 0) return new Map();
   played.sort((a, b) =>
-    a.m.date < b.m.date ? -1
-      : a.m.date > b.m.date ? 1
+    a.ts < b.ts ? -1
+      : a.ts > b.ts ? 1
         : a.i - b.i);
   const lastIdx = played[played.length - 1].i;
   const syntheticMatches = state.facit.matches.map((m, i) =>
@@ -82,7 +111,7 @@ function buildPrevRanksByName() {
     predictionsByName: state.predictionsByName,
     facit: syntheticFacit,
   });
-  return new Map(prev.participants.map((p) => [p.name, p.rank]));
+  return new Map(prev.participants.map((p) => [p.name, { rank: p.rank, total: p.total }]));
 }
 
 function recompute() {
@@ -93,11 +122,26 @@ function recompute() {
     facit: state.facit,
   });
 
-  const prevRanks = buildPrevRanksByName();
-  if (prevRanks.size > 0) {
+  // Striktare pillogik: räkna faktiska omkörningar istället för att titta på
+  // rank-nummer. Att gå från solo-3:a till delad 2:a innebär att vi *delar*
+  // platsen med någon – inte att vi körde om dem. rankDelta = (antal som var
+  // strikt före men nu är strikt bakom) − (antal i motsatt riktning).
+  const prevState = buildPrevStateByName();
+  if (prevState.size > 0) {
     for (const p of standings.participants) {
-      const pr = prevRanks.get(p.name);
-      if (pr !== undefined) p.prevRank = pr;
+      const ps = prevState.get(p.name);
+      if (!ps) continue;
+      p.prevRank = ps.rank;
+      let passed = 0;
+      let overtaken = 0;
+      for (const q of standings.participants) {
+        if (q.name === p.name) continue;
+        const qs = prevState.get(q.name);
+        if (!qs) continue;
+        if (qs.total > ps.total && q.total < p.total) passed++;
+        else if (qs.total < ps.total && q.total > p.total) overtaken++;
+      }
+      p.rankDelta = passed - overtaken;
     }
   }
 

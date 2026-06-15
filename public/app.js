@@ -674,19 +674,20 @@ function renderRow(li, p, data) {
   li.querySelector('.row-button').setAttribute('aria-label',
     `${p.name}, plats ${p.rank}, ${p.total} poäng. Visa detaljer.`);
 
-  // Placeringsändring sedan föregående match: pil + topp-3-chip när en
-  // baseline finns (servern levererar p.prevRank först efter att åtminstone
-  // en match avgjorts sedan boot).
+  // Placeringsändring sedan föregående match. Servern levererar rankDelta
+  // = (antal omkörda) − (antal som körde om mig), dvs strikt poängjämförelse
+  // – delad placering räknas inte som omkörning. Pil bara om någon faktiskt
+  // bytt poäng med någon annan.
   const move = li.querySelector('.rank-move');
-  const diff = p.prevRank == null ? null : p.prevRank - p.rank;
-  if (diff == null || diff === 0) {
+  const delta = p.rankDelta ?? 0;
+  if (delta === 0) {
     move.textContent = '';
     move.removeAttribute('data-dir');
-  } else if (diff > 0) {
-    move.textContent = `▲ ${diff}`;
+  } else if (delta > 0) {
+    move.textContent = `▲ ${delta}`;
     move.dataset.dir = 'up';
   } else {
-    move.textContent = `▼ ${-diff}`;
+    move.textContent = `▼ ${-delta}`;
     move.dataset.dir = 'down';
   }
   const top3 = li.querySelector('.chip-top3');
