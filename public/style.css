@@ -649,13 +649,66 @@ main {
 
 .match-section { margin-top: 0.8rem; }
 
-.match-section h3 {
+.match-section h3,
+.twin-section h3 {
   margin: 0 0 0.3rem;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--ink-soft);
+}
+
+.twin-section { margin-top: 0.8rem; }
+
+.twin-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.84rem;
+}
+
+.twin-row {
+  display: grid;
+  grid-template-columns: minmax(0, 6rem) minmax(2rem, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.twin-name {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.twin-track {
+  height: 0.4rem;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.twin-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--grass);
+  transition: width 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.twin-val {
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .twin-fill { transition: none; }
 }
 
 .match-list {

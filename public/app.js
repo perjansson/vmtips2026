@@ -33,6 +33,9 @@ SCHED_DAYS.forEach((day, dayIndex) => {
   });
 });
 
+// Antalet gruppmatcher i hela turneringen – nämnaren i tvilling-räknaren.
+const TOTAL_GROUP_MATCHES = FIXTURES_BY_DAY.flat().filter((fx) => fx.pair).length;
+
 const DAYS_PER_CLICK = 2;   // antal extra matchdagar per "Visa fler"-klick
 let extraDays = 0;          // utökar fönstrets bakre kant framåt
 let lastScoreByPair = new Map();
@@ -117,6 +120,7 @@ function tvBadge(ch) {
 // grupperade på utfall. Bara en panel öppen åt gången.
 
 let tipsByPair = new Map();
+let tipsByName = null; // Lazily inverterad: Map<namn, Map<pair, {h, a}>>
 let tipsLoaded = false;
 let tipsPromise = null;
 let openPair = null;
@@ -128,12 +132,49 @@ async function ensureTips() {
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((d) => {
         tipsByPair = new Map(Object.entries(d.tipsByPair ?? {}));
+        tipsByName = null; // ny data → invalidera invertering
         tipsLoaded = true;
       })
       .catch((err) => { console.error('match-tips:', err.message); })
       .finally(() => { tipsPromise = null; });
   }
   return tipsPromise;
+}
+
+// Invertera tipsByPair till per-namn lookup. Memo:as så återbesök är O(1).
+function getTipsByName() {
+  if (!tipsLoaded) return null;
+  if (tipsByName) return tipsByName;
+  const byName = new Map();
+  for (const [pair, list] of tipsByPair) {
+    for (const t of list) {
+      let m = byName.get(t.name);
+      if (!m) byName.set(t.name, m = new Map());
+      m.set(pair, { h: t.h, a: t.a });
+    }
+  }
+  tipsByName = byName;
+  return tipsByName;
+}
+
+// Top-3 deltagare som har flest identiska tips (exakt målantal) som `name`.
+function findTwins(name) {
+  const byName = getTipsByName();
+  if (!byName) return [];
+  const mine = byName.get(name);
+  if (!mine || mine.size === 0) return [];
+  const scores = [];
+  for (const [other, theirs] of byName) {
+    if (other === name) continue;
+    let count = 0;
+    for (const [pair, t] of mine) {
+      const u = theirs.get(pair);
+      if (u && u.h === t.h && u.a === t.a) count++;
+    }
+    scores.push({ name: other, count });
+  }
+  scores.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'sv'));
+  return scores.slice(0, 3);
 }
 
 // Säkert DOM-id från pair-nyckeln (lagnamn kan innehålla mellanslag, accenter, |).
@@ -550,6 +591,36 @@ function renderMatchSection(li, selector, matches, played) {
     .replaceChildren(...matches.map((m) => matchItem(m, played)));
 }
 
+// Top-3 "tvillingar" för en deltagare. Visas så fort tipsByPair finns
+// (prefetchat efter första målning); annars förblir sektionen dold.
+function renderTwins(li, name) {
+  const section = li.querySelector('.twin-section');
+  if (!tipsLoaded) { section.hidden = true; return; }
+  const twins = findTwins(name);
+  if (twins.length === 0) { section.hidden = true; return; }
+  const max = twins[0].count;
+  const ul = section.querySelector('.twin-list');
+  ul.replaceChildren(...twins.map((t) => {
+    const item = document.createElement('li');
+    item.className = 'twin-row';
+    const nm = document.createElement('span');
+    nm.className = 'twin-name';
+    nm.textContent = t.name;
+    const track = document.createElement('span');
+    track.className = 'twin-track';
+    const fill = document.createElement('span');
+    fill.className = 'twin-fill';
+    fill.style.width = `${max > 0 ? Math.round((t.count / max) * 100) : 0}%`;
+    track.append(fill);
+    const val = document.createElement('span');
+    val.className = 'twin-val';
+    val.textContent = `${t.count} / ${TOTAL_GROUP_MATCHES}`;
+    item.append(nm, track, val);
+    return item;
+  }));
+  section.hidden = false;
+}
+
 function renderDetail(li, p, facitWinner) {
   const dl = li.querySelector('.detail-grid');
   dl.replaceChildren(...detailRows(p, facitWinner).flatMap(([label, points, sub]) => {
@@ -565,6 +636,7 @@ function renderDetail(li, p, facitWinner) {
     }
     return [dt, dd];
   }));
+  renderTwins(li, p.name);
   renderMatchSection(li, '.match-recent', p.matches.recent, true);
   renderMatchSection(li, '.match-upcoming', p.matches.upcoming, false);
 }
