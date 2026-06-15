@@ -580,23 +580,19 @@ main {
 .row[data-rank="2"] .rank-badge { background: var(--silver); border-color: var(--silver); color: #fff; }
 .row[data-rank="3"] .rank-badge { background: var(--bronze); border-color: var(--bronze); color: #fff; }
 
-/* Placeringsändring sedan föregående match. Fast bredd så raderna fortsätter
-   alignera även när vissa deltagare saknar baseline. */
+/* Placeringsändring sedan föregående match – ligger inline efter namnet. */
 .rank-move {
   flex: none;
-  display: grid;
-  place-items: center;
-  width: 1.85rem;
   font-size: 0.78rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
   color: var(--ink-soft);
+  white-space: nowrap;
 }
 
 .rank-move[data-dir="up"] { color: #1f7a44; }
 .rank-move[data-dir="down"] { color: #b03838; }
-.rank-move[data-dir="flat"] { color: var(--ink-soft); opacity: 0.5; }
 
 @media (prefers-color-scheme: dark) {
   .rank-move[data-dir="up"] { color: #5ee098; }
@@ -626,15 +622,20 @@ main {
 
 .who { flex: 1; min-width: 0; }
 
+.name-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
 .name {
-  display: inline-block;
   font-weight: 700;
   font-size: 1.02rem;
-  max-width: 100%;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  vertical-align: bottom;
 }
 
 .chips {

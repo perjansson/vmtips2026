@@ -666,21 +666,16 @@ function renderRow(li, p, data) {
   // baseline finns (servern levererar p.prevRank först efter att åtminstone
   // en match avgjorts sedan boot).
   const move = li.querySelector('.rank-move');
-  if (p.prevRank == null) {
+  const diff = p.prevRank == null ? null : p.prevRank - p.rank;
+  if (diff == null || diff === 0) {
     move.textContent = '';
     move.removeAttribute('data-dir');
+  } else if (diff > 0) {
+    move.textContent = `▲ ${diff}`;
+    move.dataset.dir = 'up';
   } else {
-    const diff = p.prevRank - p.rank;
-    if (diff === 0) {
-      move.textContent = '·';
-      move.dataset.dir = 'flat';
-    } else if (diff > 0) {
-      move.textContent = `▲ ${diff}`;
-      move.dataset.dir = 'up';
-    } else {
-      move.textContent = `▼ ${-diff}`;
-      move.dataset.dir = 'down';
-    }
+    move.textContent = `▼ ${-diff}`;
+    move.dataset.dir = 'down';
   }
   const top3 = li.querySelector('.chip-top3');
   if (p.prevRank == null || p.prevRank === p.rank) {
