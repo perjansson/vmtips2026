@@ -31,12 +31,6 @@ const state = {
   payload: null, // färdigt JSON-svar för /api/standings
   tipsByPair: null, // alla deltagares gruppmatchstips, grupperat på pair-nyckeln
   updatedAt: null,
-  // Snapshot för "placering innan senast spelade match" – uppdateras varje
-  // gång playedMatches ökar mellan två recompute(). Server-omstart nollställer
-  // baseline (pil visas först när nästa match avgörs efter omstart).
-  lastPlayedCount: -1,
-  lastRanksByName: new Map(),
-  prevRankByName: new Map(),
 };
 
 // Plattat aggregat över alla deltagares gruppmatchstips, så headerns
@@ -59,6 +53,33 @@ function buildTipsByPair() {
   return Object.fromEntries(byPair);
 }
 
+// Placeringar "innan senast spelade match" – beräknas från samma facit
+// genom att tillfälligt sätta den senaste matchens mål till null och köra
+// om computeStandings. Robust över omstarter (ingen snapshot behövs) och
+// kostnaden är försumbar: en till körning av computeStandings per recompute,
+// dvs O(deltagare × matcher) – mikrosekunder för rimliga storlekar.
+function buildPrevRanksByName() {
+  if (!state.facit) return new Map();
+  const played = state.facit.matches
+    .map((m, i) => ({ m, i }))
+    .filter(({ m }) => m.homeGoals !== null && m.awayGoals !== null);
+  if (played.length === 0) return new Map();
+  played.sort((a, b) =>
+    a.m.date < b.m.date ? -1
+      : a.m.date > b.m.date ? 1
+        : a.i - b.i);
+  const lastIdx = played[played.length - 1].i;
+  const syntheticMatches = state.facit.matches.map((m, i) =>
+    (i === lastIdx ? { ...m, homeGoals: null, awayGoals: null } : m));
+  const syntheticFacit = { ...state.facit, matches: syntheticMatches };
+  const prev = computeStandings({
+    participants: state.participants,
+    predictionsByName: state.predictionsByName,
+    facit: syntheticFacit,
+  });
+  return new Map(prev.participants.map((p) => [p.name, p.rank]));
+}
+
 function recompute() {
   if (!state.facit) return;
   const standings = computeStandings({
@@ -67,21 +88,10 @@ function recompute() {
     facit: state.facit,
   });
 
-  // Snapshot-pivot: om antal spelade matcher ökat sedan förra recompute, var
-  // förra omgångens placeringar exakt "innan den nya matchen lades till" –
-  // det är den baseline vi vill jämföra mot framåt. När inget ändrats lever
-  // den existerande prevRankByName-mappen vidare så pilarna inte försvinner
-  // mellan polls.
-  const newPlayedCount = standings.facit.playedMatches;
-  const newRanksByName = new Map(standings.participants.map((p) => [p.name, p.rank]));
-  if (state.lastPlayedCount >= 0 && newPlayedCount > state.lastPlayedCount) {
-    state.prevRankByName = state.lastRanksByName;
-  }
-  state.lastPlayedCount = newPlayedCount;
-  state.lastRanksByName = newRanksByName;
-  if (state.prevRankByName.size > 0) {
+  const prevRanks = buildPrevRanksByName();
+  if (prevRanks.size > 0) {
     for (const p of standings.participants) {
-      const pr = state.prevRankByName.get(p.name);
+      const pr = prevRanks.get(p.name);
       if (pr !== undefined) p.prevRank = pr;
     }
   }
