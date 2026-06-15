@@ -651,6 +651,41 @@ function renderRow(li, p, data) {
   li.querySelector('.row-button').setAttribute('aria-label',
     `${p.name}, plats ${p.rank}, ${p.total} poäng. Visa detaljer.`);
 
+  // Placeringsändring sedan föregående match: pil + topp-3-chip när en
+  // baseline finns (servern levererar p.prevRank först efter att åtminstone
+  // en match avgjorts sedan boot).
+  const move = li.querySelector('.rank-move');
+  if (p.prevRank == null) {
+    move.textContent = '';
+    move.removeAttribute('data-dir');
+  } else {
+    const diff = p.prevRank - p.rank;
+    if (diff === 0) {
+      move.textContent = '·';
+      move.dataset.dir = 'flat';
+    } else if (diff > 0) {
+      move.textContent = `▲ ${diff}`;
+      move.dataset.dir = 'up';
+    } else {
+      move.textContent = `▼ ${-diff}`;
+      move.dataset.dir = 'down';
+    }
+  }
+  const top3 = li.querySelector('.chip-top3');
+  if (p.prevRank == null || p.prevRank === p.rank) {
+    top3.hidden = true;
+  } else if (p.rank <= 3 && p.prevRank > 3) {
+    top3.textContent = 'Ny i topp 3';
+    top3.className = 'chip chip-top3 chip-top3-in';
+    top3.hidden = false;
+  } else if (p.rank > 3 && p.prevRank <= 3) {
+    top3.textContent = 'Ur topp 3';
+    top3.className = 'chip chip-top3 chip-top3-out';
+    top3.hidden = false;
+  } else {
+    top3.hidden = true;
+  }
+
   const prevTotal = lastTotals.get(p.name);
   if (prevTotal !== undefined && prevTotal !== p.total) {
     li.classList.remove('points-flash');

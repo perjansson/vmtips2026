@@ -576,6 +576,50 @@ main {
 .row[data-rank="2"] .rank-badge { background: var(--silver); border-color: var(--silver); color: #fff; }
 .row[data-rank="3"] .rank-badge { background: var(--bronze); border-color: var(--bronze); color: #fff; }
 
+/* Placeringsändring sedan föregående match. Fast bredd så raderna fortsätter
+   alignera även när vissa deltagare saknar baseline. */
+.rank-move {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 1.85rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  color: var(--ink-soft);
+}
+
+.rank-move[data-dir="up"] { color: #1f7a44; }
+.rank-move[data-dir="down"] { color: #b03838; }
+.rank-move[data-dir="flat"] { color: var(--ink-soft); opacity: 0.5; }
+
+@media (prefers-color-scheme: dark) {
+  .rank-move[data-dir="up"] { color: #5ee098; }
+  .rank-move[data-dir="down"] { color: #ff9090; }
+}
+
+.chip-top3-in {
+  background: rgba(31, 157, 85, 0.18);
+  color: #156c3e;
+}
+
+.chip-top3-out {
+  background: rgba(176, 56, 56, 0.18);
+  color: #a13030;
+}
+
+@media (prefers-color-scheme: dark) {
+  .chip-top3-in {
+    background: rgba(94, 224, 152, 0.22);
+    color: #8fefb3;
+  }
+  .chip-top3-out {
+    background: rgba(255, 144, 144, 0.22);
+    color: #ffb0b0;
+  }
+}
+
 .who { flex: 1; min-width: 0; }
 
 .name {
