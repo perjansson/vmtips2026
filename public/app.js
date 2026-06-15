@@ -514,6 +514,18 @@ const lastTotals = new Map();   // namn → total från förra svaret
 let pollSeconds = 5;
 let lastUpdatedAt = null;
 
+// Hot-reload: servern stämplar varje payload med buildId. Vi reloadar så fort
+// vi ser ett annat värde än det sidan ursprungligen laddades med. Cache-bust
+// på script/style via ?v=BUILD_ID i HTML säkerställer att reloaden faktiskt
+// drar ner ny kod, inte 5-min-cachad gammal.
+let pageBuildId = window.__INITIAL_STANDINGS__?.buildId ?? null;
+function checkBuildChange(data) {
+  if (!data?.buildId) return false;
+  if (pageBuildId === null) { pageBuildId = data.buildId; return false; }
+  if (data.buildId !== pageBuildId) { location.reload(); return true; }
+  return false;
+}
+
 const ROUND_NAMES = {
   r32: '16-delsfinal',
   r16: 'Åttondelsfinal',
@@ -762,6 +774,7 @@ function flipReorder(orderedRows) {
 }
 
 function render(data) {
+  if (checkBuildChange(data)) return; // ny deploy upptäckt – reload pågår
   const ordered = data.participants.map((p) => {
     let li = rowsByName.get(p.name);
     if (!li) {

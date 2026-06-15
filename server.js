@@ -15,6 +15,11 @@ const config = {
   predictionsRefreshSeconds: Number(process.env.PREDICTIONS_REFRESH_SECONDS) || 300,
 };
 
+// Stabil identifierare för denna deploy. Render sätter RENDER_GIT_COMMIT per
+// deploy; lokalt får varje npm start ett unikt timestamp-id. Klienten reloadar
+// så fort den ser ett annat buildId från en poll än det sidan laddades med.
+const BUILD_ID = process.env.RENDER_GIT_COMMIT || String(Date.now());
+
 if (!config.sheetId) {
   console.error('SHEET_ID saknas. Sätt den i miljön (se .env.example).');
   process.exit(1);
@@ -100,6 +105,7 @@ function recompute() {
   state.payload = {
     updatedAt: state.updatedAt.toISOString(),
     clientPollSeconds: config.clientPollSeconds,
+    buildId: BUILD_ID,
     ...standings,
   };
   state.tipsByPair = buildTipsByPair();
@@ -175,7 +181,10 @@ const publicDir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'publi
 // Startsidan serveras med aktuell ställning inbakad, så att första målningen
 // redan har data i stället för en tom tavla som väntar på första pollen.
 // JSON:en escapas (< → <) så den inte kan bryta sig ur script-taggen.
-const indexTemplate = readFileSync(path.join(publicDir, 'index.html'), 'utf8');
+// Statiska asset-URL:er får ?v=BUILD_ID som cache-buster så att en deploy
+// faktiskt drar in ny JS/CSS i stället för 5-min-cachen.
+const indexTemplate = readFileSync(path.join(publicDir, 'index.html'), 'utf8')
+  .replaceAll('__BUILD_VERSION__', BUILD_ID);
 app.get(['/', '/index.html'], (req, res) => {
   const json = state.payload
     ? JSON.stringify(state.payload).replaceAll('<', '\\u003c')
