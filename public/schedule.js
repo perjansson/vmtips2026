@@ -45,7 +45,7 @@ window.SCHEDULE = [
     { time: '00:00', home: 'Irak', away: 'Norge', ch: 'TV4' },
     { time: '03:00', home: 'Argentina', away: 'Algeriet', ch: 'TV4' },
     { time: '06:00', home: 'Österrike', away: 'Jordanien', ch: 'TV4' },
-    { time: '19:00', home: 'Portugal', away: 'Kongo-Kinshasa', ch: 'TV4' },
+    { time: '19:00', home: 'Portugal', away: 'DR Kongo', ch: 'TV4' },
     { time: '22:00', home: 'England', away: 'Kroatien', ch: 'TV4' },
   ] },
   { date: '2026-06-18', label: 'Tor 18 juni', tv4: 'Tomas', games: [
@@ -86,7 +86,7 @@ window.SCHEDULE = [
   ] },
   { date: '2026-06-24', label: 'Ons 24 juni', tv4: 'Per', games: [
     { time: '01:00', home: 'Panama', away: 'Kroatien', ch: 'TV4' },
-    { time: '04:00', home: 'Colombia', away: 'Kongo-Kinshasa', ch: 'TV4' },
+    { time: '04:00', home: 'Colombia', away: 'DR Kongo', ch: 'TV4' },
     { time: '21:00', home: 'Schweiz', away: 'Kanada', ch: 'TV4' },
     { time: '21:00', home: 'Bosnien och Hercegovina', away: 'Qatar', ch: 'TV4' },
   ] },
@@ -115,7 +115,7 @@ window.SCHEDULE = [
     { time: '23:00', home: 'Kroatien', away: 'Ghana', ch: 'SVT' },
   ] },
   { date: '2026-06-28', label: 'Sön 28 juni', tv4: 'Per', games: [
-    { time: '01:30', home: 'Kongo-Kinshasa', away: 'Uzbekistan', ch: 'TV4' },
+    { time: '01:30', home: 'DR Kongo', away: 'Uzbekistan', ch: 'TV4' },
     { time: '01:30', home: 'Colombia', away: 'Portugal', ch: 'TV4' },
     { time: '04:00', home: 'Algeriet', away: 'Österrike', ch: 'TV4' },
     { time: '04:00', home: 'Jordanien', away: 'Argentina', ch: 'TV4' },
