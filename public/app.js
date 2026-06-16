@@ -714,9 +714,24 @@ function renderRow(li, p, data) {
   renderDetail(li, p, data.facit.winner);
 }
 
+// Färger per segment. Ledaren får guld för att matcha temat; övriga en
+// kurerad palett, med HSL-fallback om fler lag tippats än paletten räcker till.
+const WINNER_COLORS = [
+  '#d4a017', '#1f9d55', '#3b82f6', '#e0567a', '#8b5cf6', '#06b6d4',
+  '#f97316', '#ef4444', '#14b8a6', '#a855f7', '#ec4899', '#84cc16',
+];
+const winnerColor = (i) => WINNER_COLORS[i] ?? `hsl(${(i * 137.5) % 360} 62% 52%)`;
+
+const SVGNS = 'http://www.w3.org/2000/svg';
+const svgEl = (name, attrs) => {
+  const el = document.createElementNS(SVGNS, name);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+};
+
 // VM-vinnar-konsensus: aggregera deltagarnas vinnar-tips och visa som
-// sorterad stapellista. Datan finns redan i /api/standings → ingen extra
-// hämtning, ingen påverkan på första målning.
+// donutdiagram med teckenförklaring. Datan finns redan i /api/standings →
+// ingen extra hämtning, ingen påverkan på första målning.
 function renderWinnerConsensus(participants) {
   const section = document.getElementById('winner-consensus');
   if (!section) return;
@@ -730,29 +745,57 @@ function renderWinnerConsensus(participants) {
   if (byTeam.size === 0) { section.hidden = true; return; }
   const teams = [...byTeam.entries()]
     .sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0], 'sv'));
-  const max = teams[0][1].length;
-  const list = section.querySelector('.winner-list');
-  list.replaceChildren(...teams.map(([team, pickers]) => {
+  const total = teams.reduce((sum, [, pickers]) => sum + pickers.length, 0);
+
+  // Donut via stroke-dasharray. r vald så omkretsen blir 100 → andelar i %.
+  const R = 15.91549431;
+  const wrap = document.createElement('div');
+  wrap.className = 'winner-donut-wrap';
+  const svg = svgEl('svg', { class: 'winner-donut', viewBox: '0 0 42 42', 'aria-hidden': 'true' });
+  svg.append(svgEl('circle', {
+    class: 'winner-donut-bg', cx: 21, cy: 21, r: R, fill: 'none', 'stroke-width': 5,
+  }));
+  let offset = 0;
+  teams.forEach(([, pickers], i) => {
+    const pct = (pickers.length / total) * 100;
+    svg.append(svgEl('circle', {
+      cx: 21, cy: 21, r: R, fill: 'none', stroke: winnerColor(i), 'stroke-width': 5,
+      'stroke-dasharray': `${pct} ${100 - pct}`, 'stroke-dashoffset': 25 - offset,
+    }));
+    offset += pct;
+  });
+  const center = document.createElement('div');
+  center.className = 'winner-donut-center';
+  const big = document.createElement('strong');
+  big.textContent = String(total);
+  const cap = document.createElement('span');
+  cap.textContent = 'tips';
+  center.append(big, cap);
+  wrap.append(svg, center);
+
+  const legend = document.createElement('ul');
+  legend.className = 'winner-legend';
+  teams.forEach(([team, pickers], i) => {
     const li = document.createElement('li');
-    li.className = 'winner-row';
+    li.className = 'winner-legend-row';
+    const sw = document.createElement('span');
+    sw.className = 'winner-swatch';
+    sw.style.background = winnerColor(i);
     const tn = document.createElement('span');
     tn.className = 'winner-team';
     tn.textContent = team;
-    const track = document.createElement('span');
-    track.className = 'winner-track';
-    const fill = document.createElement('span');
-    fill.className = 'winner-fill';
-    fill.style.width = `${Math.round((pickers.length / max) * 100)}%`;
-    track.append(fill);
     const cnt = document.createElement('span');
     cnt.className = 'winner-count';
     cnt.textContent = String(pickers.length);
     const names = document.createElement('span');
     names.className = 'winner-names';
     names.textContent = pickers.join(' · ');
-    li.append(tn, track, cnt, names);
-    return li;
-  }));
+    li.append(sw, tn, cnt, names);
+    legend.append(li);
+  });
+
+  const chart = section.querySelector('.winner-chart');
+  chart.replaceChildren(wrap, legend);
   section.hidden = false;
 }
 

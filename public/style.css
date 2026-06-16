@@ -828,7 +828,58 @@ main {
   color: var(--ink-soft);
 }
 
-.winner-list {
+.winner-chart {
+  display: grid;
+  gap: 1rem;
+  align-items: center;
+}
+
+.winner-donut-wrap {
+  position: relative;
+  width: 9.5rem;
+  margin: 0.2rem auto 0;
+}
+
+.winner-donut {
+  display: block;
+  width: 100%;
+  height: auto;
+  transform: rotate(-90deg);
+}
+
+.winner-donut circle {
+  transition: stroke-dasharray 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.winner-donut-bg {
+  stroke: var(--surface-2);
+}
+
+.winner-donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.winner-donut-center strong {
+  font-size: 1.6rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.winner-donut-center span {
+  margin-top: 0.15rem;
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.winner-legend {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -836,40 +887,31 @@ main {
   gap: 0.55rem;
 }
 
-.winner-row {
+.winner-legend-row {
   display: grid;
-  grid-template-columns: minmax(0, 7rem) minmax(2rem, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   grid-template-rows: auto auto;
   align-items: center;
-  column-gap: 0.55rem;
+  column-gap: 0.5rem;
   row-gap: 0.15rem;
   font-size: 0.84rem;
 }
 
-.winner-team {
+.winner-swatch {
   grid-column: 1;
+  grid-row: 1;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 3px;
+}
+
+.winner-team {
+  grid-column: 2;
   grid-row: 1;
   font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.winner-track {
-  grid-column: 2;
-  grid-row: 1;
-  height: 0.5rem;
-  border-radius: 999px;
-  background: var(--surface-2);
-  overflow: hidden;
-}
-
-.winner-fill {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-  background: var(--gold);
-  transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .winner-count {
@@ -880,14 +922,22 @@ main {
 }
 
 .winner-names {
-  grid-column: 1 / -1;
+  grid-column: 2 / -1;
   grid-row: 2;
   font-size: 0.74rem;
   color: var(--ink-soft);
 }
 
+@media (min-width: 600px) {
+  .winner-chart {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 1.4rem;
+  }
+  .winner-donut-wrap { margin: 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .winner-fill { transition: none; }
+  .winner-donut circle { transition: none; }
 }
 
 /* ---- Sidfot ---- */
