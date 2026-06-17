@@ -125,6 +125,20 @@ let tipsLoaded = false;
 let tipsPromise = null;
 let openPair = null;
 
+// Slutresultat (numeriska) för spelade matcher, populeras i render() och
+// används av renderTipsInto för att räkna ut tipspoäng per tippare när
+// matchen är avgjord.
+let lastResultByPair = new Map();
+
+// Tipsregler: 3 p rätt utgång + 1 p per prickat målantal (max 5).
+function tipPoints(t, result) {
+  let p = 0;
+  if (Math.sign(t.h - t.a) === Math.sign(result.h - result.a)) p += 3;
+  if (t.h === result.h) p += 1;
+  if (t.a === result.a) p += 1;
+  return p;
+}
+
 async function ensureTips() {
   if (tipsLoaded) return;
   if (!tipsPromise) {
@@ -243,6 +257,7 @@ function renderTipsInto(inner, fx) {
     else draw.push(t);
   }
   inner.append(consensusMeter(fx, tips.length, homeWin.length, draw.length, awayWin.length));
+  const result = lastResultByPair.get(fx.pair) ?? null;
   const addGroup = (label, list) => {
     if (list.length === 0) return;
     const h = document.createElement('h4');
@@ -259,6 +274,13 @@ function renderTipsInto(inner, fx) {
       sc.className = 'sg-tips-score';
       sc.textContent = `${t.h}–${t.a}`;
       item.append(nm, sc);
+      if (result) {
+        const pts = tipPoints(t, result);
+        const ptsSpan = document.createElement('span');
+        ptsSpan.className = 'sg-tips-pts';
+        ptsSpan.textContent = pts === 0 ? '(0p)' : `(+${pts}p)`;
+        item.append(ptsSpan);
+      }
       ul.append(item);
     }
     inner.append(ul);
@@ -834,12 +856,15 @@ function render(data) {
   renderWinnerConsensus(data.participants);
 
   progressEl.textContent = `${data.facit.playedMatches} av ${data.facit.totalMatches} gruppspelsmatcher spelade`;
-  const scoreByPair = new Map(
-    (data.facit.results ?? []).map((m) => [
-      `${teamKey(m.home)}|${teamKey(m.away)}`,
-      `${m.homeGoals}–${m.awayGoals}`,
-    ]),
-  );
+  const results = data.facit.results ?? [];
+  const scoreByPair = new Map(results.map((m) => [
+    `${teamKey(m.home)}|${teamKey(m.away)}`,
+    `${m.homeGoals}–${m.awayGoals}`,
+  ]));
+  lastResultByPair = new Map(results.map((m) => [
+    `${teamKey(m.home)}|${teamKey(m.away)}`,
+    { h: m.homeGoals, a: m.awayGoals },
+  ]));
   renderSchedule(scoreByPair);
   lastUpdatedAt = new Date(data.updatedAt);
   updatedAtEl.textContent = `Senast uppdaterad ${lastUpdatedAt.toLocaleTimeString('sv-SE')}`;

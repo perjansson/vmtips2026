@@ -417,6 +417,12 @@ button.sg-row:focus-visible {
   opacity: 0.8;
 }
 
+.sg-tips-pts {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #5ee098;
+}
+
 .sg-tips-empty {
   margin: 0.2rem 0 0;
   font-size: 0.78rem;
