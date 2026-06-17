@@ -127,15 +127,29 @@ body {
   opacity: 0.85;
 }
 
-.hero-meta {
+.hero-updated {
   position: relative;
-  margin: 0;
-  font-size: 0.85rem;
+  margin: 0.3rem 0 0;
+  font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
-  opacity: 0.92;
+  opacity: 0.88;
 }
 
-.hero-meta .dot { margin: 0 0.45em; opacity: 0.6; }
+.hero-progress {
+  position: relative;
+  margin: 0.55rem 0 0;
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.95;
+}
+
+.hero-points {
+  position: relative;
+  margin: 0.12rem 0 0;
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.95;
+}
 
 /* ---- Matchschema i headern ---- */
 .sched {

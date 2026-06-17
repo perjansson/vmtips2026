@@ -6,6 +6,7 @@ const board = document.getElementById('board');
 const rowTemplate = document.getElementById('row-template');
 const updatedAtEl = document.getElementById('updated-at');
 const progressEl = document.getElementById('match-progress');
+const pointsProgressEl = document.getElementById('points-progress');
 const noticeEl = document.getElementById('notice');
 const schedEl = document.getElementById('sched');
 const schedDaysEl = document.getElementById('sched-days');
@@ -557,7 +558,27 @@ function renderSchedule(scoreByPair) {
 const rowsByName = new Map();   // namn → li-element
 const lastTotals = new Map();   // namn → total från förra svaret
 let pollSeconds = 5;
-let lastUpdatedAt = null;
+let lastUpdatedAt = null; // klienttid när vi senast tog emot ett svar
+let nextPollAt = null;    // klienttid när nästa poll är schemalagd
+let updateFailed = false;
+
+// Tickar varje sekund och räknar ned mot klientens egen nästa-poll-tid (inte
+// serverns recompute-tidsstämpel, som bara ändras var 15:e sekund). Vid 0
+// växlar texten till "Uppdaterar nu…" tills pollen faktiskt avslutas.
+function renderUpdatedAt() {
+  if (!lastUpdatedAt) return;
+  const time = lastUpdatedAt.toLocaleTimeString('sv-SE');
+  if (updateFailed) {
+    updatedAtEl.textContent = `Senast uppdaterad ${time} (försöker igen…)`;
+    return;
+  }
+  const remaining = nextPollAt
+    ? Math.max(0, Math.ceil((nextPollAt - Date.now()) / 1000))
+    : pollSeconds;
+  const status = remaining === 0 ? 'Uppdaterar nu…' : `Uppdaterar om ${remaining}s…`;
+  updatedAtEl.textContent = `Senast uppdaterad ${time} (${status})`;
+}
+setInterval(renderUpdatedAt, 1000);
 
 // Hot-reload: servern stämplar varje payload med buildId. Vi reloadar så fort
 // vi ser ett annat värde än det sidan ursprungligen laddades med. Cache-bust
@@ -878,7 +899,8 @@ function render(data) {
 
   renderWinnerConsensus(data.participants);
 
-  progressEl.textContent = `${data.facit.playedMatches} av ${data.facit.totalMatches} gruppspelsmatcher spelade`;
+  progressEl.textContent = `${data.facit.matchesPlayedTotal} av ${data.facit.totalAllMatches} matcher`;
+  pointsProgressEl.textContent = `${data.facit.pointsAtStake} poäng av ${data.facit.pointsTotal} poäng totalt`;
   const results = data.facit.results ?? [];
   const scoreByPair = new Map(results.map((m) => [
     `${teamKey(m.home)}|${teamKey(m.away)}`,
@@ -889,8 +911,11 @@ function render(data) {
     { h: m.homeGoals, a: m.awayGoals },
   ]));
   renderSchedule(scoreByPair);
-  lastUpdatedAt = new Date(data.updatedAt);
-  updatedAtEl.textContent = `Senast uppdaterad ${lastUpdatedAt.toLocaleTimeString('sv-SE')}`;
+  // Klienttid — synkar visning med faktisk poll-cykel även när servern inte
+  // har räknat om sin payload mellan två polls.
+  lastUpdatedAt = new Date();
+  updateFailed = false;
+  renderUpdatedAt();
 
   const undecided = data.facit.advancement?.thirds?.undecided;
   const missing = data.participants.filter((p) => p.missingTab).map((p) => p.name);
@@ -912,14 +937,15 @@ async function poll() {
     pollSeconds = data.clientPollSeconds || pollSeconds;
     render(data);
   } catch {
-    if (lastUpdatedAt) {
-      updatedAtEl.textContent =
-        `Senast uppdaterad ${lastUpdatedAt.toLocaleTimeString('sv-SE')} (uppdatering misslyckades, försöker igen…)`;
-    } else {
-      updatedAtEl.textContent = 'Kunde inte hämta ställningen, försöker igen…';
-    }
+    updateFailed = true;
+    if (!lastUpdatedAt) updatedAtEl.textContent = 'Kunde inte hämta ställningen, försöker igen…';
   } finally {
-    setTimeout(poll, pollSeconds * 1000);
+    // Sätt nextPollAt och scheduleNextPoll i samma andetag så displayens
+    // nedräkning är exakt synkad med när poll() faktiskt återfyrar.
+    const delay = pollSeconds * 1000;
+    nextPollAt = Date.now() + delay;
+    setTimeout(poll, delay);
+    renderUpdatedAt();
   }
 }
 

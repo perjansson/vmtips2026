@@ -145,6 +145,37 @@ function recompute() {
     }
   }
 
+  // Turneringsbreda totaler. Gruppmatcher släpper 5p per spelad match;
+  // slutspelets poäng låses upp rond för rond när nästa rondens lag-roster
+  // är känd (r16 full ⇒ R32-ronden klar ⇒ 16 matcher + 16 lag-vidare-poäng).
+  // Final + bronsmatch ger inga avancemangspoäng, men vinnaren ger 10p extra.
+  const rounds = state.facit.rounds ?? {};
+  const groupPlayed = standings.facit.playedMatches;
+  const groupTotal = state.facit.matches.length || 72;
+
+  let knockoutPlayed = 0;
+  let pointsAtStake = groupPlayed * 5;
+  if (groupPlayed === groupTotal) pointsAtStake += 32 * 5; // R32-avancemang spikat
+
+  const ROUND_SIZES = [['r16', 16], ['qf', 8], ['sf', 4], ['final', 2]];
+  for (const [key, size] of ROUND_SIZES) {
+    if ((rounds[key] ?? []).length === size) {
+      knockoutPlayed += size;
+      pointsAtStake += size * 5;
+    }
+  }
+  if (rounds.winner) {
+    knockoutPlayed += 2; // final + bronsmatch
+    pointsAtStake += 10;
+  }
+
+  standings.facit.totalAllMatches = groupTotal + 32; // 104
+  standings.facit.matchesPlayedTotal = groupPlayed + knockoutPlayed;
+  standings.facit.pointsAtStake = pointsAtStake;
+  // Per person max över hela turneringen: 72×5 (grupp) + 5×(32+16+8+4+2)
+  // (lag-vidare) + 10 (vinnare) = 360 + 310 + 10 = 680.
+  standings.facit.pointsTotal = groupTotal * 5 + (32 + 16 + 8 + 4 + 2) * 5 + 10;
+
   state.updatedAt = new Date();
   state.payload = {
     updatedAt: state.updatedAt.toISOString(),
