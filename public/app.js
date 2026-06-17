@@ -258,36 +258,59 @@ function renderTipsInto(inner, fx) {
   }
   inner.append(consensusMeter(fx, tips.length, homeWin.length, draw.length, awayWin.length));
   const result = lastResultByPair.get(fx.pair) ?? null;
-  const addGroup = (label, list) => {
-    if (list.length === 0) return;
-    const h = document.createElement('h4');
-    h.className = 'sg-tips-h';
-    h.textContent = `${label} (${list.length})`;
-    inner.append(h);
+
+  // Sortering inom en lista: störst målskillnad först, vid lika störst totala
+  // mål först. Används både i grupperna (ospelad) och som tiebreaker (spelad).
+  const byDiff = (a, b) => {
+    const da = Math.abs(a.h - a.a), db = Math.abs(b.h - b.a);
+    if (db !== da) return db - da;
+    return (b.h + b.a) - (a.h + a.a);
+  };
+
+  const renderTipItem = (t, ul, pts) => {
+    const item = document.createElement('li');
+    const nm = document.createElement('span');
+    nm.textContent = t.name;
+    const sc = document.createElement('span');
+    sc.className = 'sg-tips-score';
+    sc.textContent = `${t.h}–${t.a}`;
+    item.append(nm, sc);
+    if (pts !== undefined) {
+      const ptsSpan = document.createElement('span');
+      ptsSpan.className = 'sg-tips-pts';
+      ptsSpan.textContent = pts === 0 ? '(0p)' : `(+${pts}p)`;
+      item.append(ptsSpan);
+    }
+    ul.append(item);
+  };
+
+  if (result) {
+    // Spelad match: ingen gruppering – en enda lista, poäng desc, sen byDiff.
+    // Räkna ut poängen en gång per tippare så sorteraren slipper anropa
+    // tipPoints O(N log N) gånger.
+    const withPts = tips.map((t) => ({ ...t, pts: tipPoints(t, result) }));
+    withPts.sort((a, b) => (b.pts - a.pts) || byDiff(a, b));
     const ul = document.createElement('ul');
     ul.className = 'sg-tips-list';
-    for (const t of list) {
-      const item = document.createElement('li');
-      const nm = document.createElement('span');
-      nm.textContent = t.name;
-      const sc = document.createElement('span');
-      sc.className = 'sg-tips-score';
-      sc.textContent = `${t.h}–${t.a}`;
-      item.append(nm, sc);
-      if (result) {
-        const pts = tipPoints(t, result);
-        const ptsSpan = document.createElement('span');
-        ptsSpan.className = 'sg-tips-pts';
-        ptsSpan.textContent = pts === 0 ? '(0p)' : `(+${pts}p)`;
-        item.append(ptsSpan);
-      }
-      ul.append(item);
-    }
+    for (const t of withPts) renderTipItem(t, ul, t.pts);
     inner.append(ul);
-  };
-  addGroup(`Seger för ${fx.home}`, homeWin);
-  addGroup('Oavgjort', draw);
-  addGroup(`Seger för ${fx.away}`, awayWin);
+  } else {
+    // Ospelad: gruppera per utfall, sortera inom grupp med byDiff.
+    const addGroup = (label, list) => {
+      if (list.length === 0) return;
+      const h = document.createElement('h4');
+      h.className = 'sg-tips-h';
+      h.textContent = `${label} (${list.length})`;
+      inner.append(h);
+      const ul = document.createElement('ul');
+      ul.className = 'sg-tips-list';
+      for (const t of list.slice().sort(byDiff)) renderTipItem(t, ul);
+      inner.append(ul);
+    };
+    addGroup(`Seger för ${fx.home}`, homeWin);
+    addGroup('Oavgjort', draw);
+    addGroup(`Seger för ${fx.away}`, awayWin);
+  }
 }
 
 function closeOpenTips() {
