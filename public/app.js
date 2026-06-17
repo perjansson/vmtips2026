@@ -578,7 +578,16 @@ function renderUpdatedAt() {
   const status = remaining === 0 ? 'Uppdaterar nu…' : `Uppdaterar om ${remaining}s…`;
   updatedAtEl.textContent = `Senast uppdaterad ${time} (${status})`;
 }
-setInterval(renderUpdatedAt, 1000);
+
+// setInterval startas om efter varje poll så dess tick-boundary alignar med
+// nästa pollens schemaläggning. Annars driver de mot varandra och "1s" syns
+// bara i ~150ms innan pollen avlossar.
+let updateTimer = null;
+function restartUpdateTimer() {
+  if (updateTimer) clearInterval(updateTimer);
+  updateTimer = setInterval(renderUpdatedAt, 1000);
+}
+restartUpdateTimer();
 
 // Hot-reload: servern stämplar varje payload med buildId. Vi reloadar så fort
 // vi ser ett annat värde än det sidan ursprungligen laddades med. Cache-bust
@@ -941,11 +950,13 @@ async function poll() {
     if (!lastUpdatedAt) updatedAtEl.textContent = 'Kunde inte hämta ställningen, försöker igen…';
   } finally {
     // Sätt nextPollAt och scheduleNextPoll i samma andetag så displayens
-    // nedräkning är exakt synkad med när poll() faktiskt återfyrar.
+    // nedräkning är exakt synkad med när poll() faktiskt återfyrar. Starta
+    // även om ticken så dess sekund-boundaries alignar med poll-cykeln.
     const delay = pollSeconds * 1000;
     nextPollAt = Date.now() + delay;
     setTimeout(poll, delay);
     renderUpdatedAt();
+    restartUpdateTimer();
   }
 }
 
