@@ -42,6 +42,7 @@ const TOTAL_GROUP_MATCHES = FIXTURES_BY_DAY.flat().filter((fx) => fx.pair).lengt
 const DAYS_PER_CLICK = 2;   // antal extra matchdagar per "Visa fler/tidigare"-klick
 let extraDays = 0;          // utökar fönstrets bakre kant framåt
 let extraEarlierDays = 0;   // utökar fönstrets främre kant bakåt
+let skipAnimateOut = false; // hoppa fade-out så vi kan mäta layouten direkt
 let lastScoreByPair = new Map();
 const dayBlocks = new Map(); // dayIndex -> dagblock i DOM
 let schedReady = false;      // hoppa över in-animation vid första renderingen
@@ -90,9 +91,17 @@ schedEarlierEl.addEventListener('click', () => {
   renderSchedule(lastScoreByPair);
 });
 schedLessEl.addEventListener('click', () => {
+  // Bevara knappens position i viewporten genom kollapsen så schemat krymper
+  // "in mot" knappen istället för att puffa upp leaderboarden under den.
+  // Skippa fade-out så vi kan mäta layouten direkt efter render.
+  const beforeTop = schedLessEl.getBoundingClientRect().top;
   extraDays = 0;
   extraEarlierDays = 0;
+  skipAnimateOut = true;
   renderSchedule(lastScoreByPair);
+  skipAnimateOut = false;
+  const delta = schedLessEl.getBoundingClientRect().top - beforeTop;
+  if (Math.abs(delta) > 0.5) window.scrollBy(0, delta);
 });
 schedShowEl.addEventListener('click', () => {
   const collapsing = !schedEl.classList.contains('collapsed');
@@ -538,7 +547,7 @@ function renderSchedule(scoreByPair) {
   for (const [di, el] of [...dayBlocks]) {
     if (targetSet.has(di)) continue;
     dayBlocks.delete(di);
-    if (animate) animateOut(el); else el.remove();
+    if (animate && !skipAnimateOut) animateOut(el); else el.remove();
   }
 
   // Lägg till nya dagar (animera in) och uppdatera befintliga på plats.
