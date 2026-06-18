@@ -491,6 +491,10 @@ button.sg-row:focus-visible {
   margin-top: 0.5rem;
 }
 
+.sched-actions-top {
+  margin: 0 0 0.5rem;
+}
+
 .sched-link {
   background: none;
   border: 0;

@@ -13,6 +13,8 @@ const schedDaysEl = document.getElementById('sched-days');
 const schedMoreEl = document.getElementById('sched-more');
 const schedLessEl = document.getElementById('sched-less');
 const schedShowEl = document.getElementById('sched-show');
+const schedEarlierEl = document.getElementById('sched-earlier');
+const schedActionsTopEl = document.getElementById('sched-actions-top');
 
 // --- Matchschema i headern ---------------------------------------------
 // Det statiska schemat (window.SCHEDULE) ger ordning, tider, kanal och
@@ -37,8 +39,9 @@ SCHED_DAYS.forEach((day, dayIndex) => {
 // Antalet gruppmatcher i hela turneringen – nämnaren i tvilling-räknaren.
 const TOTAL_GROUP_MATCHES = FIXTURES_BY_DAY.flat().filter((fx) => fx.pair).length;
 
-const DAYS_PER_CLICK = 2;   // antal extra matchdagar per "Visa fler"-klick
+const DAYS_PER_CLICK = 2;   // antal extra matchdagar per "Visa fler/tidigare"-klick
 let extraDays = 0;          // utökar fönstrets bakre kant framåt
+let extraEarlierDays = 0;   // utökar fönstrets främre kant bakåt
 let lastScoreByPair = new Map();
 const dayBlocks = new Map(); // dayIndex -> dagblock i DOM
 let schedReady = false;      // hoppa över in-animation vid första renderingen
@@ -82,8 +85,13 @@ schedMoreEl.addEventListener('click', () => {
   extraDays += DAYS_PER_CLICK;
   renderSchedule(lastScoreByPair);
 });
+schedEarlierEl.addEventListener('click', () => {
+  extraEarlierDays += DAYS_PER_CLICK;
+  renderSchedule(lastScoreByPair);
+});
 schedLessEl.addEventListener('click', () => {
   extraDays = 0;
+  extraEarlierDays = 0;
   renderSchedule(lastScoreByPair);
 });
 schedShowEl.addEventListener('click', () => {
@@ -515,7 +523,7 @@ function renderSchedule(scoreByPair) {
       : [next, next + 1, next + 2].filter((i) => i < SCHED_DAYS.length);
   }
 
-  const startIdx = idxs[0];
+  const startIdx = Math.max(0, idxs[0] - extraEarlierDays);
   const endIdx = Math.min(idxs[idxs.length - 1] + extraDays, SCHED_DAYS.length - 1);
 
   const target = [];
@@ -551,7 +559,9 @@ function renderSchedule(scoreByPair) {
   }
 
   schedMoreEl.hidden = endIdx >= SCHED_DAYS.length - 1;
-  schedLessEl.hidden = extraDays === 0;
+  schedEarlierEl.hidden = startIdx <= 0;
+  schedActionsTopEl.hidden = schedEarlierEl.hidden;
+  schedLessEl.hidden = extraDays === 0 && extraEarlierDays === 0;
   schedReady = true;
 }
 
