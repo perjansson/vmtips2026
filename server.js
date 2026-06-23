@@ -138,20 +138,24 @@ function recompute() {
   // rank-nummer. Att gå från solo-3:a till delad 2:a innebär att vi *delar*
   // platsen med någon – inte att vi körde om dem. rankDelta = (antal som var
   // strikt före men nu är strikt bakom) − (antal i motsatt riktning).
+  // Jämför mot live-inkluderad total så pilen stämmer med den visade
+  // placeringen (som också rankas på bastotal + live).
   const prevState = buildPrevStateByName(effectiveFacit);
   if (prevState.size > 0) {
     for (const p of standings.participants) {
       const ps = prevState.get(p.name);
       if (!ps) continue;
       p.prevRank = ps.rank;
+      const pTotal = p.total + p.liveDelta;
       let passed = 0;
       let overtaken = 0;
       for (const q of standings.participants) {
         if (q.name === p.name) continue;
         const qs = prevState.get(q.name);
         if (!qs) continue;
-        if (qs.total > ps.total && q.total < p.total) passed++;
-        else if (qs.total < ps.total && q.total > p.total) overtaken++;
+        const qTotal = q.total + q.liveDelta;
+        if (qs.total > ps.total && qTotal < pTotal) passed++;
+        else if (qs.total < ps.total && qTotal > pTotal) overtaken++;
       }
       p.rankDelta = passed - overtaken;
     }
@@ -189,12 +193,7 @@ function recompute() {
   standings.facit.pointsTotal = groupTotal * 5 + (32 + 16 + 8 + 4 + 2) * 5 + 10;
 
   // Live-överlägg = bara pågående matcher (avslutade ligger redan i totalen).
-  // Pulsande delta + brickor per deltagare; tomt när inget pågår.
-  for (const p of standings.participants) {
-    const v = liveView.byName[p.name];
-    p.liveDelta = v ? v.delta : 0;
-    p.liveRankDelta = v ? v.rankDelta : 0;
-  }
+  // p.liveDelta/liveRankDelta och placeringen sätts i computeStandingsWithLive.
   standings.live = {
     matches: liveView.matches,
     provider: liveProvider.name,

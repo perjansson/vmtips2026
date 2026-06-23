@@ -22,5 +22,30 @@ export function computeStandingsWithLive({ participants, predictionsByName, faci
     liveView = buildLiveView(standings.participants, prov.participants, inPlay);
   }
 
+  // Fäst live-delta och rangordna om på den live-inkluderade totalen, så att
+  // ordning och placering speglar det som faktiskt visas (bastotal + live).
+  for (const p of standings.participants) {
+    const v = liveView.byName[p.name];
+    p.liveDelta = v ? v.delta : 0;
+    p.liveRankDelta = v ? v.rankDelta : 0;
+  }
+  rankByLiveTotal(standings.participants);
+
   return { standings, effectiveFacit, liveView, inPlay };
+}
+
+const liveTotal = (p) => p.total + (p.liveDelta || 0);
+
+// Sortera och sätt rank på live-inkluderad total (delad placering vid lika,
+// svensk namnsortering som tiebreak – samma som computeStandings).
+function rankByLiveTotal(participants) {
+  participants.sort((a, b) => (liveTotal(b) - liveTotal(a)) || a.name.localeCompare(b.name, 'sv'));
+  let prevTotal = null;
+  let prevRank = 0;
+  participants.forEach((p, i) => {
+    const t = liveTotal(p);
+    p.rank = t === prevTotal ? prevRank : i + 1;
+    prevTotal = t;
+    prevRank = p.rank;
+  });
 }
