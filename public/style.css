@@ -474,6 +474,82 @@ button.sg-row:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
+.sg-score-live { color: #d83a3a; }
+
+.sg-live-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.sg-live-link:hover .sg-score-live { text-decoration: underline; }
+.sg-live-link:hover { opacity: 0.85; }
+
+.sg-live-badge {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  color: #d83a3a;
+  font-variant-numeric: tabular-nums;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.sg-live-badge::before {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: #d83a3a;
+  animation: live-pulse 2.6s ease-in-out infinite;
+}
+.sg-live-badge[data-unconfirmed] {
+  color: #8a8a8a;
+}
+.sg-live-badge[data-unconfirmed]::before {
+  background: #8a8a8a;
+  animation: none;
+}
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
+/* Provisorisk live-poäng som egen pulserande kolumn till vänster om totalen. */
+.live-col {
+  flex: none;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  line-height: 1.05;
+  gap: 0.05rem;
+  animation: live-pulse 2.6s ease-in-out infinite;
+}
+.live-col-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #d83a3a;
+}
+.live-col-value {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #d83a3a;
+  font-variant-numeric: tabular-nums;
+}
+
+/* När en pågående match bidrar med poäng får totalen en lätt röd ton. */
+.row.has-live .total-value {
+  color: color-mix(in srgb, var(--ink) 58%, #d83a3a);
+}
+@media (prefers-reduced-motion: reduce) {
+  .sg-live-badge::before,
+  .live-col { animation: none; }
+}
+
 .tv {
   font-size: 0.72rem;
   font-weight: 600;
@@ -521,7 +597,7 @@ button.sg-row:focus-visible {
 main {
   max-width: 44rem;
   margin: 0.8rem auto 0;
-  padding: 0 0.9rem 1rem;
+  padding: 0 0.4rem 1rem;
   position: relative;
 }
 
@@ -631,6 +707,11 @@ main {
 .chip-top3-out {
   background: rgba(176, 56, 56, 0.18);
   color: #a13030;
+}
+
+/* "Ur topp 3" döljs i mobillayouten för att spara horisontellt utrymme. */
+@media (max-width: 599px) {
+  .chip-top3-out { display: none; }
 }
 
 @media (prefers-color-scheme: dark) {

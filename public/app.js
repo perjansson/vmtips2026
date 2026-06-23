@@ -147,6 +147,10 @@ let openPair = null;
 // används av renderTipsInto för att räkna ut tipspoäng per tippare när
 // matchen är avgjord.
 let lastResultByPair = new Map();
+// Live-matcher (pair → { homeGoals, awayGoals, status, minute }) ur senaste
+// payloadens live-block. Tomt när inget pågår. Arket vinner: visas bara för
+// matcher som ännu saknar bekräftat resultat.
+let liveByPair = new Map();
 
 // Tipsregler: 3 p rätt utgång + 1 p per prickat målantal (max 5).
 function tipPoints(t, result) {
@@ -404,11 +408,36 @@ function gameRow(fx, scoreByPair) {
   const meta = document.createElement('span');
   meta.className = 'sg-meta';
   const score = fx.pair ? scoreByPair.get(fx.pair) : undefined;
+  const live = (!score && fx.pair) ? liveByPair.get(fx.pair) : undefined;
   if (score) {
     const sc = document.createElement('span');
     sc.className = 'sg-score';
     sc.textContent = score;
     meta.append(sc);
+  } else if (live && live.homeGoals != null && live.awayGoals != null) {
+    const sc = document.createElement('span');
+    sc.className = 'sg-score sg-score-live';
+    sc.textContent = `${live.homeGoals}–${live.awayGoals}`;
+    // Live: bara den pulserande pricken (ingen minut – känns flakig och tar
+    // plats). Slutspelad men obekräftad: diskret "Ej bekräftat".
+    const badge = document.createElement('span');
+    badge.className = 'sg-live-badge';
+    if (live.status === 'live') {
+      badge.setAttribute('aria-label', 'Live');
+    } else {
+      badge.textContent = 'Ej bekräftat';
+      badge.dataset.unconfirmed = 'true';
+    }
+    // Tryckbar: öppnar Googles livescore-kort i ny flik. Routas via radens
+    // klickhanterare (en <a> får inte ligga i <button>), så övriga klick på
+    // raden fäller fortfarande ut tipspanelen.
+    const link = document.createElement('span');
+    link.className = 'sg-live-link';
+    link.dataset.href = `https://www.google.com/search?q=${encodeURIComponent(`${fx.home} ${fx.away}`)}`;
+    link.setAttribute('role', 'link');
+    link.title = `Öppna livescore för ${fx.home}–${fx.away}`;
+    link.append(sc, badge);
+    meta.append(link);
   }
   meta.append(tvBadge(fx.ch));
 
@@ -432,7 +461,14 @@ function gameRow(fx, scoreByPair) {
     row.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
     if (isOpen) renderTipsInto(inner, fx);
 
-    row.addEventListener('click', () => toggleTips(fx, row, panel, inner));
+    row.addEventListener('click', (e) => {
+      const link = e.target.closest('.sg-live-link');
+      if (link && link.dataset.href) {
+        window.open(link.dataset.href, '_blank', 'noopener');
+        return;
+      }
+      toggleTips(fx, row, panel, inner);
+    });
     li.append(panel);
   }
 
@@ -446,7 +482,9 @@ function daySig(day, fixtures, scoreByPair, past, current) {
   let s = `${day.label}|${day.tv4 ?? ''}|${past ? 1 : 0}|${current ? 1 : 0}`;
   for (const fx of fixtures) {
     const score = fx.pair ? (scoreByPair.get(fx.pair) ?? '') : '';
-    s += `\n${fx.time}|${fx.pair ?? fx.title ?? ''}|${score}|${fx.note ?? ''}|${fx.ch}`;
+    const lm = fx.pair ? liveByPair.get(fx.pair) : null;
+    const liveSig = lm ? `${lm.homeGoals}-${lm.awayGoals}-${lm.status}` : '';
+    s += `\n${fx.time}|${fx.pair ?? fx.title ?? ''}|${score}|${liveSig}|${fx.note ?? ''}|${fx.ch}`;
   }
   return s;
 }
@@ -765,8 +803,20 @@ function renderRow(li, p, data) {
   li.querySelector('.chip-group b').textContent = `${p.groupPoints} p`;
   li.querySelector('.chip-knockout b').textContent = `${p.knockoutPoints} p`;
   li.querySelector('.total-value').textContent = p.total;
+  // Provisorisk live-poäng: egen pulserande kolumn ("Live:" över "+Np") till
+  // vänster om totalen, så totalen står på samma plats oavsett om en match
+  // pågår. Aldrig negativ – live lägger bara till poäng för ospelade matcher.
+  const lDelta = p.liveDelta ?? 0;
+  const liveCol = li.querySelector('.live-col');
+  if (lDelta > 0) {
+    li.querySelector('.live-col-value').textContent = `+${lDelta}p`;
+    liveCol.hidden = false;
+  } else {
+    liveCol.hidden = true;
+  }
+  li.classList.toggle('has-live', lDelta > 0);
   li.querySelector('.row-button').setAttribute('aria-label',
-    `${p.name}, plats ${p.rank}, ${p.total} poäng. Visa detaljer.`);
+    `${p.name}, plats ${p.rank}, ${p.total} poäng${lDelta > 0 ? `, live +${lDelta} poäng` : ''}. Visa detaljer.`);
 
   // Placeringsändring sedan föregående match. Servern levererar rankDelta
   // = (antal omkörda) − (antal som körde om mig), dvs strikt poängjämförelse
@@ -938,6 +988,7 @@ function render(data) {
     `${teamKey(m.home)}|${teamKey(m.away)}`,
     { h: m.homeGoals, a: m.awayGoals },
   ]));
+  liveByPair = new Map((data.live?.matches ?? []).map((m) => [m.pair, m]));
   renderSchedule(scoreByPair);
   // Klienttid — synkar visning med faktisk poll-cykel även när servern inte
   // har räknat om sin payload mellan två polls.

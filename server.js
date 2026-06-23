@@ -5,6 +5,9 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { fetchTab, fetchParticipants } from './src/sheetClient.js';
 import { createSheetResultProvider } from './src/resultProvider.js';
+import { createLiveProvider } from './src/liveProvider.js';
+import { mergeLiveIntoFacit } from './src/liveMerge.js';
+import { buildLiveView } from './src/liveView.js';
 import { computeStandings } from './src/standings.js';
 import { matchPairKey, teamKey } from './src/parse.js';
 
@@ -14,6 +17,8 @@ const config = {
   sheetRefreshSeconds: Number(process.env.SHEET_REFRESH_SECONDS) || 15,
   clientPollSeconds: Number(process.env.CLIENT_POLL_SECONDS) || 5,
   predictionsRefreshSeconds: Number(process.env.PREDICTIONS_REFRESH_SECONDS) || 300,
+  liveRefreshSeconds: Number(process.env.LIVE_REFRESH_SECONDS) || 15,
+  liveEnabled: process.env.LIVE_ENABLED !== 'false',
 };
 
 // Stabil identifierare för denna deploy. Render sätter RENDER_GIT_COMMIT per
@@ -27,6 +32,7 @@ if (!config.sheetId) {
 }
 
 const resultProvider = createSheetResultProvider({ sheetId: config.sheetId });
+const liveProvider = createLiveProvider();
 
 // Delad cache – alla klienter serveras samma beräknade svar, så 100 besökare
 // ger ändå bara en ark-hämtning per intervall.
@@ -36,6 +42,8 @@ const state = {
   facit: null,
   payload: null, // färdigt JSON-svar för /api/standings
   tipsByPair: null, // alla deltagares gruppmatchstips, grupperat på pair-nyckeln
+  live: [], // senaste live-snapshot (svenska nycklar), [] när inget pågår
+  liveUpdatedAt: null,
   updatedAt: null,
 };
 
@@ -176,6 +184,31 @@ function recompute() {
   // (lag-vidare) + 10 (vinnare) = 360 + 310 + 10 = 680.
   standings.facit.pointsTotal = groupTotal * 5 + (32 + 16 + 8 + 4 + 2) * 5 + 10;
 
+  // Live-överlägg: kör samma scorer på ett provisoriskt facit (ark + live i
+  // tomma matcher) och fäst per-deltagare delta + matchbrickor. Arket vinner –
+  // mergeLiveIntoFacit rör aldrig en match arket redan har resultat för.
+  if (state.live.length > 0) {
+    const provisionalFacit = mergeLiveIntoFacit(state.facit, state.live);
+    const prov = computeStandings({
+      participants: state.participants,
+      predictionsByName: state.predictionsByName,
+      facit: provisionalFacit,
+    });
+    const view = buildLiveView(standings.participants, prov.participants, state.live);
+    for (const p of standings.participants) {
+      const v = view.byName[p.name];
+      p.liveDelta = v ? v.delta : 0;
+      p.liveRankDelta = v ? v.rankDelta : 0;
+    }
+    standings.live = {
+      matches: view.matches,
+      provider: liveProvider.name,
+      updatedAt: state.liveUpdatedAt ? state.liveUpdatedAt.toISOString() : null,
+    };
+  } else {
+    standings.live = { matches: [], provider: liveProvider.name, updatedAt: null };
+  }
+
   state.updatedAt = new Date();
   state.payload = {
     updatedAt: state.updatedAt.toISOString(),
@@ -220,6 +253,38 @@ async function refreshPredictions(names = state.participants) {
     }
   }
   recompute();
+}
+
+// En match är "live" från avspark till +2.25 h. Avsparkstider kommer ur det
+// statiska schemat (lokal tolkning – tidszonsglapp påverkar bara hur ofta vi
+// pollar, aldrig korrektheten, som vilar på providerns status).
+const LIVE_WINDOW_MS = 2.25 * 3600 * 1000;
+function anyMatchInWindow(now = Date.now()) {
+  for (const ts of kickoffByPair.values()) {
+    const ko = Date.parse(ts.replace(' ', 'T'));
+    if (Number.isNaN(ko)) continue;
+    if (now >= ko && now <= ko + LIVE_WINDOW_MS) return true;
+  }
+  return false;
+}
+
+// Live-snapshot, varje LIVE_REFRESH_SECONDS. Pollar bara providern inom ett
+// schemalagt live-fönster (såvida providern inte själv ignorerar det, t.ex.
+// mock). Fel/timeout → behåll förra snapshot (självläkande), kasta aldrig.
+async function refreshLive() {
+  if (!config.liveEnabled) return;
+  try {
+    if (liveProvider.requiresWindow && !anyMatchInWindow()) {
+      if (state.live.length > 0) { state.live = []; recompute(); }
+      return;
+    }
+    const snap = await liveProvider.getLive();
+    state.live = Array.isArray(snap) ? snap : [];
+    state.liveUpdatedAt = new Date();
+    recompute();
+  } catch (err) {
+    console.error(`Live-uppdatering misslyckades: ${err.message}`);
+  }
 }
 
 const app = express();
@@ -275,9 +340,11 @@ app.use(express.static(publicDir, { maxAge: '5m', index: false }));
 
 await refreshFacit();
 await refreshPredictions();
+await refreshLive();
 
 setInterval(refreshFacit, config.sheetRefreshSeconds * 1000);
 setInterval(refreshPredictions, config.predictionsRefreshSeconds * 1000);
+if (config.liveEnabled) setInterval(refreshLive, config.liveRefreshSeconds * 1000);
 
 app.listen(config.port, () => {
   console.log(`Lyssnar på http://localhost:${config.port} (ark-uppdatering var ${config.sheetRefreshSeconds}s)`);
