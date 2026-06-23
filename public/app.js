@@ -836,9 +836,11 @@ function renderRow(li, p, data) {
   // Placeringsändring sedan föregående match. Servern levererar rankDelta
   // = (antal omkörda) − (antal som körde om mig), dvs strikt poängjämförelse
   // – delad placering räknas inte som omkörning. Pil bara om någon faktiskt
-  // bytt poäng med någon annan.
+  // bytt poäng med någon annan. Under pågående match är placeringen preliminär,
+  // så vi döljer både pilarna och topp 3-notiserna tills resultaten är klara.
+  const liveActive = (data.live?.matches?.length ?? 0) > 0;
   const move = li.querySelector('.rank-move');
-  const delta = p.rankDelta ?? 0;
+  const delta = liveActive ? 0 : (p.rankDelta ?? 0);
   if (delta === 0) {
     move.textContent = '';
     move.removeAttribute('data-dir');
@@ -850,7 +852,7 @@ function renderRow(li, p, data) {
     move.dataset.dir = 'down';
   }
   const top3 = li.querySelector('.chip-top3');
-  if (p.prevRank == null || p.prevRank === p.rank) {
+  if (liveActive || p.prevRank == null || p.prevRank === p.rank) {
     top3.hidden = true;
   } else if (p.rank <= 3 && p.prevRank > 3) {
     top3.textContent = 'Ny i topp 3';
