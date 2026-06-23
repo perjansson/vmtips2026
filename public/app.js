@@ -802,11 +802,13 @@ function renderRow(li, p, data) {
   li.querySelector('.rank-badge').textContent = p.rank;
   li.querySelector('.chip-group b').textContent = `${p.groupPoints} p`;
   li.querySelector('.chip-knockout b').textContent = `${p.knockoutPoints} p`;
-  li.querySelector('.total-value').textContent = p.total;
-  // Provisorisk live-poäng: egen pulserande kolumn ("Live:" över "+Np") till
-  // vänster om totalen, så totalen står på samma plats oavsett om en match
-  // pågår. Aldrig negativ – live lägger bara till poäng för ospelade matcher.
+  // Provisorisk live-poäng: när en match pågår räknas live-poängen IN i totalen
+  // (visas i röd ton via .has-live) och delta:t visas även i den pulserande
+  // "Live"-kolumnen. Aldrig negativ – live lägger bara till poäng för matcher
+  // arket ännu inte har. Utan live visas den bekräftade totalen som vanligt.
   const lDelta = p.liveDelta ?? 0;
+  const shownTotal = p.total + lDelta;
+  li.querySelector('.total-value').textContent = shownTotal;
   const liveCol = li.querySelector('.live-col');
   if (lDelta > 0) {
     li.querySelector('.live-col-value').textContent = `+${lDelta}p`;
@@ -816,7 +818,7 @@ function renderRow(li, p, data) {
   }
   li.classList.toggle('has-live', lDelta > 0);
   li.querySelector('.row-button').setAttribute('aria-label',
-    `${p.name}, plats ${p.rank}, ${p.total} poäng${lDelta > 0 ? `, live +${lDelta} poäng` : ''}. Visa detaljer.`);
+    `${p.name}, plats ${p.rank}, ${shownTotal} poäng${lDelta > 0 ? ` (varav ${lDelta} live)` : ''}. Visa detaljer.`);
 
   // Placeringsändring sedan föregående match. Servern levererar rankDelta
   // = (antal omkörda) − (antal som körde om mig), dvs strikt poängjämförelse
