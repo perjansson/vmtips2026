@@ -279,7 +279,14 @@ function renderTipsInto(inner, fx) {
     else draw.push(t);
   }
   inner.append(consensusMeter(fx, tips.length, homeWin.length, draw.length, awayWin.length));
-  const result = lastResultByPair.get(fx.pair) ?? null;
+  // Bekräftat facit vinner. Saknas det men matchen pågår live: visa samma
+  // poängrankade vy som för en avgjord match, fast räknad på live-resultatet
+  // och med pulsande poäng.
+  const confirmed = lastResultByPair.get(fx.pair) ?? null;
+  const liveM = !confirmed ? liveByPair.get(fx.pair) : null;
+  const isLive = !!(liveM && liveM.status === 'live'
+    && liveM.homeGoals != null && liveM.awayGoals != null);
+  const result = confirmed ?? (isLive ? { h: liveM.homeGoals, a: liveM.awayGoals } : null);
 
   // Sortering inom en lista: störst målskillnad först, vid lika störst totala
   // mål först. Används både i grupperna (ospelad) och som tiebreaker (spelad).
@@ -289,7 +296,7 @@ function renderTipsInto(inner, fx) {
     return (b.h + b.a) - (a.h + a.a);
   };
 
-  const renderTipItem = (t, ul, pts) => {
+  const renderTipItem = (t, ul, pts, live) => {
     const item = document.createElement('li');
     const nm = document.createElement('span');
     nm.textContent = t.name;
@@ -299,7 +306,7 @@ function renderTipsInto(inner, fx) {
     item.append(nm, sc);
     if (pts !== undefined) {
       const ptsSpan = document.createElement('span');
-      ptsSpan.className = 'sg-tips-pts';
+      ptsSpan.className = live ? 'sg-tips-pts sg-tips-pts-live' : 'sg-tips-pts';
       ptsSpan.textContent = pts === 0 ? '(0p)' : `(+${pts}p)`;
       item.append(ptsSpan);
     }
@@ -307,14 +314,14 @@ function renderTipsInto(inner, fx) {
   };
 
   if (result) {
-    // Spelad match: ingen gruppering – en enda lista, poäng desc, sen byDiff.
-    // Räkna ut poängen en gång per tippare så sorteraren slipper anropa
-    // tipPoints O(N log N) gånger.
+    // Spelad (eller pågående) match: ingen gruppering – en enda lista, poäng
+    // desc, sen byDiff. Räkna ut poängen en gång per tippare så sorteraren
+    // slipper anropa tipPoints O(N log N) gånger.
     const withPts = tips.map((t) => ({ ...t, pts: tipPoints(t, result) }));
     withPts.sort((a, b) => (b.pts - a.pts) || byDiff(a, b));
     const ul = document.createElement('ul');
     ul.className = 'sg-tips-list';
-    for (const t of withPts) renderTipItem(t, ul, t.pts);
+    for (const t of withPts) renderTipItem(t, ul, t.pts, isLive);
     inner.append(ul);
   } else {
     // Ospelad: gruppera per utfall, sortera inom grupp med byDiff.
@@ -433,6 +440,7 @@ function gameRow(fx, scoreByPair) {
     // raden fäller fortfarande ut tipspanelen.
     const link = document.createElement('span');
     link.className = 'sg-live-link';
+    if (live.status === 'live') link.dataset.live = 'true';
     link.dataset.href = `https://www.google.com/search?q=${encodeURIComponent(`${fx.home} ${fx.away}`)}`;
     link.setAttribute('role', 'link');
     link.title = `Öppna livescore för ${fx.home}–${fx.away}`;
@@ -802,10 +810,10 @@ function renderRow(li, p, data) {
   li.querySelector('.rank-badge').textContent = p.rank;
   li.querySelector('.chip-group b').textContent = `${p.groupPoints} p`;
   li.querySelector('.chip-knockout b').textContent = `${p.knockoutPoints} p`;
-  // Provisorisk live-poäng: när en match pågår räknas live-poängen IN i totalen
-  // (visas i röd ton via .has-live) och delta:t visas även i den pulserande
-  // "Live"-kolumnen. Aldrig negativ – live lägger bara till poäng för matcher
-  // arket ännu inte har. Utan live visas den bekräftade totalen som vanligt.
+  // Provisorisk live-poäng: när en match pågår räknas live-poängen IN i totalen,
+  // men totalen själv pulsar inte – den står kvar i vanlig (vit) färg. Delta:t
+  // visas i stället i den pulserande "Live"-kolumnen. Aldrig negativt – live
+  // lägger bara till poäng för matcher arket ännu inte har.
   const lDelta = p.liveDelta ?? 0;
   const shownTotal = p.total + lDelta;
   li.querySelector('.total-value').textContent = shownTotal;

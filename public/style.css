@@ -486,6 +486,15 @@ button.sg-row:focus-visible {
 .sg-live-link:hover .sg-score-live { text-decoration: underline; }
 .sg-live-link:hover { opacity: 0.85; }
 
+/* Pågående match: hela live-indikatorn (x–x + prick) pulsar med samma
+   färgpuls som totalen och +Xp-kolumnen. Slutspelad (Ej bekräftat) gör det
+   inte – den saknar data-live. */
+.sg-live-link[data-live] {
+  animation: live-pulse 2.6s ease-in-out infinite;
+}
+.sg-live-link[data-live] .sg-score-live,
+.sg-live-link[data-live] .sg-live-badge { color: inherit; }
+
 .sg-live-badge {
   font-size: 0.66rem;
   font-weight: 800;
@@ -501,8 +510,7 @@ button.sg-row:focus-visible {
   width: 0.5rem;
   height: 0.5rem;
   border-radius: 50%;
-  background: #d83a3a;
-  animation: live-pulse 2.6s ease-in-out infinite;
+  background: currentColor;
 }
 .sg-live-badge[data-unconfirmed] {
   color: #8a8a8a;
@@ -511,11 +519,6 @@ button.sg-row:focus-visible {
   background: #8a8a8a;
   animation: none;
 }
-@keyframes live-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.25; }
-}
-
 /* Provisorisk live-poäng som egen pulserande kolumn till vänster om totalen. */
 .live-col {
   flex: none;
@@ -535,22 +538,32 @@ button.sg-row:focus-visible {
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #d83a3a;
+  color: inherit;
 }
 .live-col-value {
   font-size: 0.85rem;
   font-weight: 800;
-  color: #d83a3a;
+  color: inherit;
   font-variant-numeric: tabular-nums;
 }
 
-/* När en pågående match bidrar med poäng får totalen en lätt röd ton. */
-.row.has-live .total-value {
-  color: color-mix(in srgb, var(--ink) 58%, #d83a3a);
+/* Gemensam live-puls: all live-data (total, +Xp-kolumn, schemats x–x + prick,
+   och tippspoängen i den expanderade panelen) pulsar färgen mellan vitt och
+   full röd (0.9 alpha) i samma takt (2.6 s). */
+@keyframes live-pulse {
+  0%, 100% { color: #fff; }
+  50% { color: rgba(216, 58, 58, 0.9); }
+}
+.sg-tips-pts-live {
+  animation: live-pulse 2.6s ease-in-out infinite;
 }
 @media (prefers-reduced-motion: reduce) {
-  .sg-live-badge::before,
-  .live-col { animation: none; }
+  .live-col,
+  .sg-live-link[data-live],
+  .sg-tips-pts-live {
+    animation: none;
+    color: rgba(216, 58, 58, 0.9);
+  }
 }
 
 .tv {
