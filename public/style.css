@@ -527,6 +527,9 @@ button.sg-row:focus-visible {
   gap: 0.05rem;
   animation: live-pulse 2.6s ease-in-out infinite;
 }
+/* display: inline-flex ovan slår annars ut [hidden] (UA-regeln), så kolumnen
+   måste döljas explicit när den inte har någon live-poäng. */
+.live-col[hidden] { display: none; }
 .live-col-label {
   font-size: 0.6rem;
   font-weight: 700;
