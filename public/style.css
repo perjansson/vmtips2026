@@ -189,6 +189,15 @@ body {
   .sched.collapsed .sched-actions { display: flex; }
 }
 
+/* På mobil döljs matcherna när schemat är kollapsat – men en pågående match
+   ska alltid synas: visa bara dagblocket med live-match, och bara live-raden
+   i det. (Inget livespel ⇒ basregeln ovan håller listan dold.) */
+@media (max-width: 599px) {
+  .sched.collapsed .sched-days:has(.sd-has-live) { display: flex; }
+  .sched.collapsed .sched-days:has(.sd-has-live) > .sd:not(.sd-has-live) { display: none; }
+  .sched.collapsed .sched-days .sd-has-live .sg:not(.sg-live) { display: none; }
+}
+
 .sched-days {
   display: flex;
   flex-direction: column;

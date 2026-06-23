@@ -416,6 +416,7 @@ function gameRow(fx, scoreByPair) {
   meta.className = 'sg-meta';
   const score = fx.pair ? scoreByPair.get(fx.pair) : undefined;
   const live = (!score && fx.pair) ? liveByPair.get(fx.pair) : undefined;
+  if (live && live.status === 'live') li.classList.add('sg-live');
   if (score) {
     const sc = document.createElement('span');
     sc.className = 'sg-score';
@@ -503,6 +504,10 @@ function fillDayContent(block, day, fixtures, scoreByPair, past, current) {
   const sig = daySig(day, fixtures, scoreByPair, past, current);
   if (block._sig === sig) return;
   block._sig = sig;
+  // Markera dagblock med en pågående match så mobilens kollapsade vy kan visa
+  // just den (se .sd-has-live i CSS).
+  block.classList.toggle('sd-has-live', fixtures.some((fx) => fx.pair
+    && liveByPair.get(fx.pair)?.status === 'live'));
   const head = document.createElement('div');
   head.className = 'sd-head';
   const label = document.createElement('span');
