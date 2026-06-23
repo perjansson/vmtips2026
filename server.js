@@ -8,6 +8,7 @@ import { createSheetResultProvider } from './src/resultProvider.js';
 import { createLiveProvider } from './src/liveProvider.js';
 import { mergeLiveIntoFacit } from './src/liveMerge.js';
 import { buildLiveView } from './src/liveView.js';
+import { isInLiveWindow } from './src/liveWindow.js';
 import { computeStandings } from './src/standings.js';
 import { matchPairKey, teamKey } from './src/parse.js';
 
@@ -255,15 +256,12 @@ async function refreshPredictions(names = state.participants) {
   recompute();
 }
 
-// En match är "live" från avspark till +2.25 h. Avsparkstider kommer ur det
-// statiska schemat (lokal tolkning – tidszonsglapp påverkar bara hur ofta vi
-// pollar, aldrig korrektheten, som vilar på providerns status).
-const LIVE_WINDOW_MS = 2.25 * 3600 * 1000;
+// Är någon schemalagd match i sitt live-fönster just nu? Avsparkstiderna är
+// svensk tid; isInLiveWindow tolkar dem som +02:00 så detta blir rätt även när
+// servern kör UTC (Render). Se src/liveWindow.js.
 function anyMatchInWindow(now = Date.now()) {
   for (const ts of kickoffByPair.values()) {
-    const ko = Date.parse(ts.replace(' ', 'T'));
-    if (Number.isNaN(ko)) continue;
-    if (now >= ko && now <= ko + LIVE_WINDOW_MS) return true;
+    if (isInLiveWindow(ts, now)) return true;
   }
   return false;
 }
