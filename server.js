@@ -6,8 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { fetchTab, fetchParticipants } from './src/sheetClient.js';
 import { createSheetResultProvider } from './src/resultProvider.js';
 import { createLiveProvider } from './src/liveProvider.js';
-import { mergeLiveIntoFacit } from './src/liveMerge.js';
-import { buildLiveView } from './src/liveView.js';
+import { computeStandingsWithLive } from './src/liveStandings.js';
 import { isInLiveWindow } from './src/liveWindow.js';
 import { computeStandings } from './src/standings.js';
 import { matchPairKey, teamKey } from './src/parse.js';
@@ -97,9 +96,9 @@ try {
 // null. Returnerar { rank, total } per namn så recompute() kan jämföra både
 // rangordning och poäng. Kostnad: en till körning av computeStandings per
 // recompute – mikrosekunder för rimliga storlekar.
-function buildPrevStateByName() {
-  if (!state.facit) return new Map();
-  const played = state.facit.matches
+function buildPrevStateByName(facit) {
+  if (!facit) return new Map();
+  const played = facit.matches
     .map((m, i) => ({
       m,
       i,
@@ -112,9 +111,9 @@ function buildPrevStateByName() {
       : a.ts > b.ts ? 1
         : a.i - b.i);
   const lastIdx = played[played.length - 1].i;
-  const syntheticMatches = state.facit.matches.map((m, i) =>
+  const syntheticMatches = facit.matches.map((m, i) =>
     (i === lastIdx ? { ...m, homeGoals: null, awayGoals: null } : m));
-  const syntheticFacit = { ...state.facit, matches: syntheticMatches };
+  const syntheticFacit = { ...facit, matches: syntheticMatches };
   const prev = computeStandings({
     participants: state.participants,
     predictionsByName: state.predictionsByName,
@@ -125,17 +124,21 @@ function buildPrevStateByName() {
 
 function recompute() {
   if (!state.facit) return;
-  const standings = computeStandings({
+  // Avslutade live-matcher vävs in i facit:et (settled, arket vinner ändå);
+  // pågående matcher blir live-överlägg. Resten räknar på det "effektiva"
+  // facit:et så avslutade matcher visas precis som arkbekräftade resultat.
+  const { standings, effectiveFacit, liveView } = computeStandingsWithLive({
     participants: state.participants,
     predictionsByName: state.predictionsByName,
     facit: state.facit,
+    live: state.live,
   });
 
   // Striktare pillogik: räkna faktiska omkörningar istället för att titta på
   // rank-nummer. Att gå från solo-3:a till delad 2:a innebär att vi *delar*
   // platsen med någon – inte att vi körde om dem. rankDelta = (antal som var
   // strikt före men nu är strikt bakom) − (antal i motsatt riktning).
-  const prevState = buildPrevStateByName();
+  const prevState = buildPrevStateByName(effectiveFacit);
   if (prevState.size > 0) {
     for (const p of standings.participants) {
       const ps = prevState.get(p.name);
@@ -158,9 +161,9 @@ function recompute() {
   // slutspelets poäng låses upp rond för rond när nästa rondens lag-roster
   // är känd (r16 full ⇒ R32-ronden klar ⇒ 16 matcher + 16 lag-vidare-poäng).
   // Final + bronsmatch ger inga avancemangspoäng, men vinnaren ger 10p extra.
-  const rounds = state.facit.rounds ?? {};
+  const rounds = effectiveFacit.rounds ?? {};
   const groupPlayed = standings.facit.playedMatches;
-  const groupTotal = state.facit.matches.length || 72;
+  const groupTotal = effectiveFacit.matches.length || 72;
 
   let knockoutPlayed = 0;
   let pointsAtStake = groupPlayed * 5;
@@ -185,30 +188,18 @@ function recompute() {
   // (lag-vidare) + 10 (vinnare) = 360 + 310 + 10 = 680.
   standings.facit.pointsTotal = groupTotal * 5 + (32 + 16 + 8 + 4 + 2) * 5 + 10;
 
-  // Live-överlägg: kör samma scorer på ett provisoriskt facit (ark + live i
-  // tomma matcher) och fäst per-deltagare delta + matchbrickor. Arket vinner –
-  // mergeLiveIntoFacit rör aldrig en match arket redan har resultat för.
-  if (state.live.length > 0) {
-    const provisionalFacit = mergeLiveIntoFacit(state.facit, state.live);
-    const prov = computeStandings({
-      participants: state.participants,
-      predictionsByName: state.predictionsByName,
-      facit: provisionalFacit,
-    });
-    const view = buildLiveView(standings.participants, prov.participants, state.live);
-    for (const p of standings.participants) {
-      const v = view.byName[p.name];
-      p.liveDelta = v ? v.delta : 0;
-      p.liveRankDelta = v ? v.rankDelta : 0;
-    }
-    standings.live = {
-      matches: view.matches,
-      provider: liveProvider.name,
-      updatedAt: state.liveUpdatedAt ? state.liveUpdatedAt.toISOString() : null,
-    };
-  } else {
-    standings.live = { matches: [], provider: liveProvider.name, updatedAt: null };
+  // Live-överlägg = bara pågående matcher (avslutade ligger redan i totalen).
+  // Pulsande delta + brickor per deltagare; tomt när inget pågår.
+  for (const p of standings.participants) {
+    const v = liveView.byName[p.name];
+    p.liveDelta = v ? v.delta : 0;
+    p.liveRankDelta = v ? v.rankDelta : 0;
   }
+  standings.live = {
+    matches: liveView.matches,
+    provider: liveProvider.name,
+    updatedAt: state.liveUpdatedAt ? state.liveUpdatedAt.toISOString() : null,
+  };
 
   state.updatedAt = new Date();
   state.payload = {
