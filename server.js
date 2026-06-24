@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { fetchTab, fetchParticipants } from './src/sheetClient.js';
 import { createSheetResultProvider } from './src/resultProvider.js';
 import { createLiveProvider } from './src/liveProvider.js';
-import { computeStandingsWithLive } from './src/liveStandings.js';
+import { computeStandingsWithLive, captureSettled } from './src/liveStandings.js';
 import { isInLiveWindow } from './src/liveWindow.js';
 import { computeStandings } from './src/standings.js';
 import { matchPairKey, teamKey } from './src/parse.js';
@@ -42,7 +42,9 @@ const state = {
   facit: null,
   payload: null, // färdigt JSON-svar för /api/standings
   tipsByPair: null, // alla deltagares gruppmatchstips, grupperat på pair-nyckeln
-  live: [], // senaste live-snapshot (svenska nycklar), [] när inget pågår
+  live: [], // pågående matcher (transient), [] när inget spelas just nu
+  settled: new Map(), // pair → avslutat feed-resultat, behålls tills arket har det
+  settledSeeded: false, // har vi pollat minst en gång (seedat settled)?
   liveUpdatedAt: null,
   updatedAt: null,
 };
@@ -127,11 +129,13 @@ function recompute() {
   // Avslutade live-matcher vävs in i facit:et (settled, arket vinner ändå);
   // pågående matcher blir live-överlägg. Resten räknar på det "effektiva"
   // facit:et så avslutade matcher visas precis som arkbekräftade resultat.
+  // Avslutade resultat (beständiga, även mellan live-fönster) + pågående matcher.
+  const live = [...state.settled.values(), ...state.live];
   const { standings, effectiveFacit, liveView } = computeStandingsWithLive({
     participants: state.participants,
     predictionsByName: state.predictionsByName,
     facit: state.facit,
-    live: state.live,
+    live,
   });
 
   // Striktare pillogik: räkna faktiska omkörningar istället för att titta på
@@ -262,12 +266,18 @@ function anyMatchInWindow(now = Date.now()) {
 async function refreshLive() {
   if (!config.liveEnabled) return;
   try {
-    if (liveProvider.requiresWindow && !anyMatchInWindow()) {
+    // Utanför live-fönster pollar vi inte (kvotvänligt) – MEN bara när vi redan
+    // seedat de avslutade resultaten minst en gång, så en omstart mitt i natten
+    // ändå hämtar gårdagens slutresultat. state.settled (avslutade) behålls
+    // alltid; bara pågående matcher (state.live) är transienta.
+    if (liveProvider.requiresWindow && state.settledSeeded && !anyMatchInWindow()) {
       if (state.live.length > 0) { state.live = []; recompute(); }
       return;
     }
     const snap = await liveProvider.getLive();
-    state.live = Array.isArray(snap) ? snap : [];
+    captureSettled(state.settled, snap);
+    state.live = (Array.isArray(snap) ? snap : []).filter((m) => m.status === 'live');
+    state.settledSeeded = true;
     state.liveUpdatedAt = new Date();
     recompute();
   } catch (err) {

@@ -1,6 +1,26 @@
 import { computeStandings } from './standings.js';
 import { mergeLiveIntoFacit } from './liveMerge.js';
 import { buildLiveView } from './liveView.js';
+import { matchPairKey } from './parse.js';
+
+// Plockar avslutade matcher ur ett live-snapshot in i en beständig karta
+// (pair → resultat). Avslutade resultat ska behållas som "settled" även när
+// live-fönstret stängt och vi slutar polla – tills arket har resultatet (då
+// vinner arket ändå via merge-only-empty). Pågående matcher fångas inte.
+export function captureSettled(settled, snapshot) {
+  for (const m of snapshot ?? []) {
+    if (m.status === 'finished' && m.homeGoals != null && m.awayGoals != null) {
+      settled.set(matchPairKey(m), {
+        home: m.home,
+        away: m.away,
+        homeGoals: m.homeGoals,
+        awayGoals: m.awayGoals,
+        status: 'finished',
+      });
+    }
+  }
+  return settled;
+}
 
 // Live-aware ställning. Snapshotet delas i två:
 //  - avslutade matcher (status 'finished') behandlas som facit och vävs in i

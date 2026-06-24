@@ -1,7 +1,26 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeStandingsWithLive } from '../src/liveStandings.js';
+import { computeStandingsWithLive, captureSettled } from '../src/liveStandings.js';
 import { emptyRounds } from '../src/sheetParse.js';
+
+test('captureSettled behåller avslutade matcher, inte pågående', () => {
+  const settled = new Map();
+  captureSettled(settled, [
+    { home: 'Belgien', away: 'Iran', homeGoals: 2, awayGoals: 1, status: 'finished', minute: null },
+    { home: 'Spanien', away: 'Marocko', homeGoals: 1, awayGoals: 0, status: 'live', minute: 30 },
+  ]);
+  assert.equal(settled.size, 1);
+  assert.deepEqual(settled.get('belgien|iran'), {
+    home: 'Belgien', away: 'Iran', homeGoals: 2, awayGoals: 1, status: 'finished',
+  });
+});
+
+test('captureSettled persisterar över anrop (även när snapshot blir tomt)', () => {
+  const settled = new Map();
+  captureSettled(settled, [{ home: 'Belgien', away: 'Iran', homeGoals: 2, awayGoals: 1, status: 'finished' }]);
+  captureSettled(settled, []); // utanför fönster: tomt snapshot
+  assert.equal(settled.size, 1, 'tidigare avslutat resultat finns kvar');
+});
 
 const facit = (a, b) => ({
   matches: [
