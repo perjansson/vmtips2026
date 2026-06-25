@@ -109,6 +109,15 @@ export function computeStandings({ participants, predictionsByName, facit }) {
       groupStageComplete,
       winner: facit.rounds.winner,
       advancement,
+      // Lag som faktiskt tagit sig till varje slutspelsrond (litet, delas av
+      // alla) – klienten färgar deltagarnas gissningar rätt/fel mot detta.
+      rounds: {
+        r32: facit.rounds.r32 ?? [],
+        r16: facit.rounds.r16 ?? [],
+        qf: facit.rounds.qf ?? [],
+        sf: facit.rounds.sf ?? [],
+        final: facit.rounds.final ?? [],
+      },
     },
   };
 }

@@ -808,6 +808,42 @@ main {
 
 .detail-grid .subtle { font-weight: 400; color: var(--ink-soft); }
 
+/* Klickbar slutspelsrond (utfällbar lag-lista). Caret visar tillstånd. */
+.detail-grid dt.ko-clickable,
+.detail-grid dd.ko-clickable { cursor: pointer; }
+.detail-grid dt.ko-clickable {
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.detail-grid dt.ko-clickable::before {
+  content: "▸";
+  font-size: 0.7em;
+  color: var(--ink-soft);
+  transition: transform 0.15s ease;
+}
+.detail-grid dt.ko-clickable[data-open="true"]::before { transform: rotate(90deg); }
+
+/* Lag-lista: växer horisontellt och radbryts. Rätt lag i vit/normal font,
+   missade i grå. Full bredd över bägge grid-kolumnerna. */
+.ko-teams {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin: 0.05rem 0 0.35rem;
+}
+.ko-teams[hidden] { display: none; }
+.ko-team {
+  font-size: 0.8rem;
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+.ko-hit { color: var(--ink); font-weight: 700; }
+.ko-miss { color: var(--ink-soft); }
+
 .match-section { margin-top: 0.8rem; }
 
 .match-section h3,

@@ -42,6 +42,7 @@ const state = {
   facit: null,
   payload: null, // färdigt JSON-svar för /api/standings
   tipsByPair: null, // alla deltagares gruppmatchstips, grupperat på pair-nyckeln
+  knockoutByName: null, // namn → { r32, r16, qf, sf, final } slutspelsgissningar
   live: [], // pågående matcher (transient), [] när inget spelas just nu
   settled: new Map(), // pair → avslutat feed-resultat, behålls tills arket har det
   settledSeeded: false, // har vi pollat minst en gång (seedat settled)?
@@ -67,6 +68,24 @@ function buildTipsByPair() {
     list.sort((x, y) => x.name.localeCompare(y.name, 'sv'));
   }
   return Object.fromEntries(byPair);
+}
+
+// Per deltagare: gissade lag per slutspelsrond. Statiskt (låst efter start),
+// så det serveras via /api/match-tips (hämtas en gång) i stället för att blåsa
+// upp /api/standings-pollen. Klienten färgar mot facit.rounds från pollen.
+function buildKnockoutByName() {
+  const out = {};
+  for (const [name, predictions] of state.predictionsByName) {
+    const r = predictions.rounds ?? {};
+    out[name] = {
+      r32: r.r32 ?? [],
+      r16: r.r16 ?? [],
+      qf: r.qf ?? [],
+      sf: r.sf ?? [],
+      final: r.final ?? [],
+    };
+  }
+  return out;
 }
 
 // Avsparkstider från det statiska schemat (public/schedule.js) så vi kan
@@ -212,6 +231,7 @@ function recompute() {
     ...standings,
   };
   state.tipsByPair = buildTipsByPair();
+  state.knockoutByName = buildKnockoutByName();
 }
 
 // Facit + deltagarlista, varje SHEET_REFRESH_SECONDS. Fel → behåll cachen.
@@ -311,6 +331,7 @@ app.get('/api/match-tips', (req, res) => {
   res.json({
     updatedAt: state.updatedAt.toISOString(),
     tipsByPair: state.tipsByPair,
+    knockoutByName: state.knockoutByName ?? {},
   });
 });
 

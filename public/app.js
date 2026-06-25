@@ -138,6 +138,8 @@ function tvBadge(ch) {
 
 let tipsByPair = new Map();
 let tipsByName = null; // Lazily inverterad: Map<namn, Map<pair, {h, a}>>
+let knockoutByName = null; // namn → { r32, r16, ... } slutspelsgissningar (statiskt)
+const openRounds = new Set(); // "namn:rond" som är expanderade i detaljkortet
 let tipsLoaded = false;
 let tipsPromise = null;
 let openPair = null;
@@ -167,6 +169,7 @@ async function ensureTips() {
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((d) => {
         tipsByPair = new Map(Object.entries(d.tipsByPair ?? {}));
+        knockoutByName = d.knockoutByName ?? {};
         tipsByName = null; // ny data → invalidera invertering
         tipsLoaded = true;
       })
@@ -693,21 +696,69 @@ function makeRow(name) {
   return li;
 }
 
-function detailRows(p, facitWinner) {
-  const rows = [];
-  rows.push(['Gruppspel', `${p.breakdown.group.points} p`,
-    `${p.breakdown.group.scoredMatches} rättade matcher`]);
-  for (const [key, label] of Object.entries(ROUND_NAMES)) {
-    const r = p.breakdown.knockout.rounds[key];
-    rows.push([label, `${r.points} p`, `${r.correct} rätt lag`]);
+// En statisk dt/dd-rad i detaljrutan.
+function detailRow(label, points, sub) {
+  const dt = document.createElement('dt');
+  dt.textContent = label;
+  const dd = document.createElement('dd');
+  dd.textContent = points;
+  if (sub) {
+    const span = document.createElement('span');
+    span.className = 'subtle';
+    span.textContent = ` · ${sub}`;
+    dd.append(span);
   }
-  const winnerHit = p.breakdown.knockout.winnerPoints > 0;
-  rows.push([
-    `VM-vinnare: ${p.winnerPick ?? '–'}`,
-    `${p.breakdown.knockout.winnerPoints} p`,
-    facitWinner ? (winnerHit ? 'rätt!' : 'fel') : 'ej avgjort',
-  ]);
-  return rows;
+  return [dt, dd];
+}
+
+// En slutspelsrond i detaljrutan: dt/dd som vanligt, men klickbar (med
+// utfällbar lag-lista) så snart minst ett lag kvalat in till ronden. Listan
+// visar deltagarens gissningar – rätt lag i vit font, missade i grå.
+function knockoutRoundNodes(li, p, data, key, label) {
+  const r = p.breakdown.knockout.rounds[key];
+  const facitTeams = data.facit.rounds?.[key] ?? [];
+  const qualified = facitTeams.length > 0;
+  const [dt, dd] = detailRow(label, `${r.points} p`, `${r.correct} rätt lag`);
+  if (!qualified) return [dt, dd];
+
+  const okey = `${p.name}:${key}`;
+  const isOpen = openRounds.has(okey);
+  dt.classList.add('ko-clickable');
+  dt.dataset.open = isOpen ? 'true' : 'false';
+  dt.setAttribute('role', 'button');
+  dt.setAttribute('aria-expanded', String(isOpen));
+  const toggle = async () => {
+    if (openRounds.has(okey)) openRounds.delete(okey); else openRounds.add(okey);
+    renderDetail(li, p, data);
+    if (openRounds.has(okey) && !tipsLoaded) { await ensureTips(); renderDetail(li, p, data); }
+  };
+  dt.addEventListener('click', toggle);
+  dd.classList.add('ko-clickable');
+  dd.addEventListener('click', toggle);
+
+  const panel = document.createElement('div');
+  panel.className = 'ko-teams';
+  panel.hidden = !isOpen;
+  // Bygg lag-listan bara för öppnade ronder (liten mängd) – billigt per poll.
+  if (isOpen) {
+    // Alfabetisk ordning (för alla deltagare lika) gör listorna lätta att jämföra.
+    const guesses = [...(knockoutByName?.[p.name]?.[key] ?? [])]
+      .sort((a, b) => a.localeCompare(b, 'sv'));
+    if (!tipsLoaded) {
+      panel.textContent = 'Hämtar lag…';
+    } else if (guesses.length === 0) {
+      panel.textContent = 'Inga lag tippade.';
+    } else {
+      const facitSet = new Set(facitTeams.map(teamKey));
+      for (const team of guesses) {
+        const chip = document.createElement('span');
+        chip.className = facitSet.has(teamKey(team)) ? 'ko-team ko-hit' : 'ko-team ko-miss';
+        chip.textContent = team;
+        panel.append(chip);
+      }
+    }
+  }
+  return [dt, dd, panel];
 }
 
 const shortDate = (iso) => {
@@ -788,21 +839,21 @@ function renderTwins(li, name) {
   section.hidden = false;
 }
 
-function renderDetail(li, p, facitWinner) {
+function renderDetail(li, p, data) {
   const dl = li.querySelector('.detail-grid');
-  dl.replaceChildren(...detailRows(p, facitWinner).flatMap(([label, points, sub]) => {
-    const dt = document.createElement('dt');
-    dt.textContent = label;
-    const dd = document.createElement('dd');
-    dd.textContent = points;
-    if (sub) {
-      const span = document.createElement('span');
-      span.className = 'subtle';
-      span.textContent = ` · ${sub}`;
-      dd.append(span);
-    }
-    return [dt, dd];
-  }));
+  const nodes = [];
+  nodes.push(...detailRow('Gruppspel', `${p.breakdown.group.points} p`,
+    `${p.breakdown.group.scoredMatches} rättade matcher`));
+  for (const [key, label] of Object.entries(ROUND_NAMES)) {
+    nodes.push(...knockoutRoundNodes(li, p, data, key, label));
+  }
+  const winnerHit = p.breakdown.knockout.winnerPoints > 0;
+  nodes.push(...detailRow(
+    `VM-vinnare: ${p.winnerPick ?? '–'}`,
+    `${p.breakdown.knockout.winnerPoints} p`,
+    data.facit.winner ? (winnerHit ? 'rätt!' : 'fel') : 'ej avgjort',
+  ));
+  dl.replaceChildren(...nodes);
   renderTwins(li, p.name);
   renderMatchSection(li, '.match-recent', p.matches.recent, true);
   renderMatchSection(li, '.match-upcoming', p.matches.upcoming, false);
@@ -871,7 +922,7 @@ function renderRow(li, p, data) {
     void li.offsetWidth; // starta om animationen
     li.classList.add('points-flash');
   }
-  renderDetail(li, p, data.facit.winner);
+  renderDetail(li, p, data);
 }
 
 // Färger per segment. Ledaren får guld för att matcha temat; övriga en
