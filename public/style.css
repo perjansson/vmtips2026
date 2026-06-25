@@ -186,6 +186,73 @@ body {
   gap: 0.5rem;
 }
 
+/* ---- Slutspelslag (lag vidare per rond) ---- */
+.ko-panel {
+  position: relative;
+  margin: 0.7rem auto 0;
+  max-width: 30rem;
+  text-align: left;
+}
+.ko-panel-toggle {
+  display: block;
+  margin: 0 auto 0.5rem;
+  background: rgba(0, 0, 0, 0.18);
+  border: 0;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 0.45rem 1rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.ko-panel-toggle:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.ko-panel.collapsed .ko-panel-rounds { display: none; }
+
+.ko-panel-rounds {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+.ko-round-group { position: relative; }
+.ko-round-label {
+  margin: 0 0 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.8;
+  text-align: center; /* mobil: centrerat (desktop återställer till vänster) */
+}
+.ko-round-teams {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  justify-content: center; /* mobil: centrerat */
+}
+.kop-team {
+  font-size: 0.78rem;
+  padding: 0.08rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  color: #f3fbf5;
+  white-space: nowrap;
+}
+
+@media (min-width: 600px) {
+  .ko-panel-toggle { display: none; }
+  .ko-panel.collapsed .ko-panel-rounds { display: flex; }
+  /* Ronder sida vid sida (vänster→höger som ett bracket-flöde). */
+  .ko-panel-rounds {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.4rem 1.2rem;
+    align-items: flex-start;
+  }
+  .ko-round-label { text-align: left; }
+  .ko-round-teams { justify-content: flex-start; }
+}
+
 /* In-/ut-animeringar: enskilda dagblock (Visa fler/färre, dygnsskifte)
    och hela listan (mobilens Visa/Dölj matcher). */
 @keyframes sd-in {

@@ -14,6 +14,9 @@ const schedLessEl = document.getElementById('sched-less');
 const schedShowEl = document.getElementById('sched-show');
 const schedEarlierEl = document.getElementById('sched-earlier');
 const schedActionsTopEl = document.getElementById('sched-actions-top');
+const koPanelEl = document.getElementById('ko-panel');
+const koPanelToggleEl = document.getElementById('ko-panel-toggle');
+const koPanelRoundsEl = document.getElementById('ko-panel-rounds');
 
 // --- Matchschema i headern ---------------------------------------------
 // Det statiska schemat (window.SCHEDULE) ger ordning, tider, kanal och
@@ -123,6 +126,53 @@ schedShowEl.addEventListener('click', () => {
     onSelfAnimEnd(schedDaysEl, () => schedDaysEl.classList.remove('anim-in'));
   }
 });
+
+// Slutspelslag-panelen: utfälld som standard. På mobil kan den fällas ihop
+// (knapp); på desktop visas den alltid (knappen göms i CSS).
+koPanelToggleEl.addEventListener('click', () => {
+  const collapsing = !koPanelEl.classList.contains('collapsed');
+  koPanelEl.classList.toggle('collapsed', collapsing);
+  koPanelToggleEl.textContent = collapsing ? 'Visa slutspelslag' : 'Dölj slutspelslag';
+  koPanelToggleEl.setAttribute('aria-expanded', String(!collapsing));
+});
+
+// Lag som tagit sig vidare per rond (facit). Bygger bara om när laguppsättningen
+// faktiskt ändrats (signatur) så pollen inte ritar om 60+ chip i onödan.
+const KO_PANEL_ROUNDS = [
+  ['r32', '16-delsfinal'], ['r16', 'Åttondelsfinal'], ['qf', 'Kvartsfinal'],
+  ['sf', 'Semifinal'], ['final', 'Final'],
+];
+function koRoundGroup(label, teams) {
+  const group = document.createElement('div');
+  group.className = 'ko-round-group';
+  const h = document.createElement('h4');
+  h.className = 'ko-round-label';
+  h.textContent = `${label} · ${teams.length}`;
+  const list = document.createElement('div');
+  list.className = 'ko-round-teams';
+  for (const t of [...teams].sort((a, b) => a.localeCompare(b, 'sv'))) {
+    const chip = document.createElement('span');
+    chip.className = 'kop-team';
+    chip.textContent = t;
+    list.append(chip);
+  }
+  group.append(h, list);
+  return group;
+}
+function renderKnockoutPanel(facit) {
+  const rounds = facit.rounds ?? {};
+  const sig = JSON.stringify([rounds.r32, rounds.r16, rounds.qf, rounds.sf, rounds.final, facit.winner]);
+  if (koPanelRoundsEl._sig === sig) return;
+  koPanelRoundsEl._sig = sig;
+  const groups = [];
+  for (const [key, label] of KO_PANEL_ROUNDS) {
+    const teams = rounds[key] ?? [];
+    if (teams.length > 0) groups.push(koRoundGroup(label, teams));
+  }
+  if (facit.winner) groups.push(koRoundGroup('VM-vinnare', [facit.winner]));
+  koPanelEl.hidden = groups.length === 0;
+  koPanelRoundsEl.replaceChildren(...groups);
+}
 
 function tvBadge(ch) {
   const span = document.createElement('span');
@@ -1045,6 +1095,7 @@ function render(data) {
   renderWinnerConsensus(data.participants);
 
   pointsProgressEl.textContent = `${data.facit.pointsAtStake} poäng av ${data.facit.pointsTotal} poäng totalt`;
+  renderKnockoutPanel(data.facit);
   const results = data.facit.results ?? [];
   const scoreByPair = new Map(results.map((m) => [
     `${teamKey(m.home)}|${teamKey(m.away)}`,
