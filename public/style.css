@@ -783,9 +783,10 @@ main {
   color: #a13030;
 }
 
-/* "Ur topp 3" döljs i mobillayouten för att spara horisontellt utrymme. */
+/* Topp 3-notiser ("Ny i topp 3" / "Ur topp 3") döljs i mobillayouten för att
+   spara horisontellt utrymme. */
 @media (max-width: 599px) {
-  .chip-top3-out { display: none; }
+  .chip-top3 { display: none; }
 }
 
 @media (prefers-color-scheme: dark) {
