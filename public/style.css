@@ -117,21 +117,6 @@ body {
   letter-spacing: -0.02em;
 }
 
-.hero-updated {
-  position: relative;
-  margin: 0.3rem 0 0;
-  font-size: 0.75rem;
-  font-variant-numeric: tabular-nums;
-  opacity: 0.88;
-}
-
-.hero-points {
-  position: relative;
-  margin: 0.55rem 0 0;
-  font-size: 0.82rem;
-  font-variant-numeric: tabular-nums;
-  opacity: 0.95;
-}
 
 /* ---- Matchschema i headern ---- */
 .sched {
@@ -1168,6 +1153,8 @@ main {
 }
 
 .foot p { margin: 0.15rem 0; }
+.foot-status { font-variant-numeric: tabular-nums; }
+.foot-status + p:not(.foot-status) { margin-top: 0.6rem; }
 
 @media (min-width: 600px) {
   .row-button { padding: 0.85rem 1.1rem; }
