@@ -109,22 +109,12 @@ body {
   82% { transform: translateY(-0.4em) scale(1, 1); }
 }
 
-.hero-title, .hero-kicker { position: relative; }
-
 .hero-title {
+  position: relative;
   margin: 0;
   font-size: clamp(2rem, 7vw, 3rem);
   font-weight: 800;
   letter-spacing: -0.02em;
-}
-
-.hero-kicker {
-  margin: 0.15rem 0 0.4rem;
-  font-size: 0.85rem;
-  font-weight: 700;
-  letter-spacing: 0.28em;
-  text-transform: uppercase;
-  opacity: 0.85;
 }
 
 .hero-updated {
@@ -135,17 +125,9 @@ body {
   opacity: 0.88;
 }
 
-.hero-progress {
-  position: relative;
-  margin: 0.55rem 0 0;
-  font-size: 0.82rem;
-  font-variant-numeric: tabular-nums;
-  opacity: 0.95;
-}
-
 .hero-points {
   position: relative;
-  margin: 0.12rem 0 0;
+  margin: 0.55rem 0 0;
   font-size: 0.82rem;
   font-variant-numeric: tabular-nums;
   opacity: 0.95;

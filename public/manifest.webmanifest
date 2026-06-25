@@ -1,7 +1,7 @@
 {
   "name": "VM-tipset 2026",
   "short_name": "VM-tipset",
-  "description": "Live-ställning i VM 2026-tipset.",
+  "description": "Ställning i VM 2026-tipset.",
   "lang": "sv",
   "display": "standalone",
   "start_url": "/",

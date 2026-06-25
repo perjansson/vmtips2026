@@ -5,7 +5,6 @@
 const board = document.getElementById('board');
 const rowTemplate = document.getElementById('row-template');
 const updatedAtEl = document.getElementById('updated-at');
-const progressEl = document.getElementById('match-progress');
 const pointsProgressEl = document.getElementById('points-progress');
 const noticeEl = document.getElementById('notice');
 const schedEl = document.getElementById('sched');
@@ -994,7 +993,6 @@ function render(data) {
 
   renderWinnerConsensus(data.participants);
 
-  progressEl.textContent = `${data.facit.matchesPlayedTotal} av ${data.facit.totalAllMatches} matcher`;
   pointsProgressEl.textContent = `${data.facit.pointsAtStake} poäng av ${data.facit.pointsTotal} poäng totalt`;
   const results = data.facit.results ?? [];
   const scoreByPair = new Map(results.map((m) => [
