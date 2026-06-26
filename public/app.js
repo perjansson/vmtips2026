@@ -142,7 +142,58 @@ const KO_PANEL_ROUNDS = [
   ['r32', '16-delsfinal'], ['r16', 'Åttondelsfinal'], ['qf', 'Kvartsfinal'],
   ['sf', 'Semifinal'], ['final', 'Final'],
 ];
-function koRoundGroup(label, teams) {
+
+// Vilken (rond, lag) som just nu har sin gissar-lista utfälld i panelen.
+// Bara en åt gången – en delad ruta per rond visar listan.
+let openKoTeam = null; // { roundKey, teamKey } | null
+
+// För en given rond: Map<teamKey, string[] namn> som hade laget i sin gissning.
+// Räknas ut en gång per signatur-ändring (billigt: ~25 namn × 5 ronder).
+function koGuessersByRound() {
+  const ROUND_KEYS = ['r32', 'r16', 'qf', 'sf', 'final'];
+  const out = {};
+  for (const k of ROUND_KEYS) out[k] = new Map();
+  if (!knockoutByName) return { byRound: out, total: 0 };
+  let total = 0;
+  for (const [name, guesses] of Object.entries(knockoutByName)) {
+    total++;
+    for (const k of ROUND_KEYS) {
+      for (const t of guesses?.[k] ?? []) {
+        const key = teamKey(t);
+        if (!out[k].has(key)) out[k].set(key, []);
+        out[k].get(key).push(name);
+      }
+    }
+  }
+  return { byRound: out, total };
+}
+
+function koTeamChip(team, count, total) {
+  // Innan tips laddats: ren span (oklickbar, ingen räknare). Annars: knapp
+  // med räknare och progressfyllning.
+  if (count == null) {
+    const chip = document.createElement('span');
+    chip.className = 'kop-team';
+    chip.textContent = team;
+    return chip;
+  }
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'kop-team kop-team-btn';
+  btn.dataset.team = teamKey(team);
+  btn.setAttribute('aria-expanded', 'false');
+  btn.title = `${count} av ${total} tippade ${team} hit`;
+  const name = document.createElement('span');
+  name.className = 'kop-team-name';
+  name.textContent = team;
+  const badge = document.createElement('span');
+  badge.className = 'kop-team-count';
+  badge.textContent = count;
+  btn.append(name, badge);
+  return btn;
+}
+
+function koRoundGroup(roundKey, label, teams, guessersByTeam, total) {
   const group = document.createElement('div');
   group.className = 'ko-round-group';
   const h = document.createElement('h4');
@@ -150,28 +201,120 @@ function koRoundGroup(label, teams) {
   h.textContent = `${label} · ${teams.length}`;
   const list = document.createElement('div');
   list.className = 'ko-round-teams';
+  const detail = document.createElement('div');
+  detail.className = 'kop-team-detail';
+  detail.hidden = true;
+  group.dataset.round = roundKey ?? '';
   for (const t of [...teams].sort((a, b) => a.localeCompare(b, 'sv'))) {
-    const chip = document.createElement('span');
-    chip.className = 'kop-team';
-    chip.textContent = t;
+    const tk = teamKey(t);
+    const count = guessersByTeam ? (guessersByTeam.get(tk)?.length ?? 0) : null;
+    const chip = koTeamChip(t, count, total);
+    if (chip.tagName === 'BUTTON') {
+      chip.addEventListener('click', () => {
+        toggleKoTeam(roundKey, tk, t, guessersByTeam, group);
+      });
+    }
     list.append(chip);
   }
-  group.append(h, list);
+  group.append(h, list, detail);
+  if (openKoTeam && openKoTeam.roundKey === roundKey) {
+    const found = teams.find((t) => teamKey(t) === openKoTeam.teamKey);
+    if (found && guessersByTeam) {
+      paintKoTeamDetail(group, found, openKoTeam.teamKey, guessersByTeam, total);
+    } else {
+      openKoTeam = null;
+    }
+  }
   return group;
 }
+
+function paintKoTeamDetail(group, teamName, tk, guessersByTeam, total) {
+  const detail = group.querySelector('.kop-team-detail');
+  const hitNames = [...(guessersByTeam.get(tk) ?? [])]
+    .sort((a, b) => a.localeCompare(b, 'sv'));
+  const hitSet = new Set(hitNames);
+  const missNames = Object.keys(knockoutByName ?? {})
+    .filter((n) => !hitSet.has(n))
+    .sort((a, b) => a.localeCompare(b, 'sv'));
+
+  detail.replaceChildren();
+  const addSection = (klass, heading, names) => {
+    const h = document.createElement('div');
+    h.className = `kop-team-detail-h ${klass}`;
+    h.textContent = heading;
+    detail.append(h);
+    if (names.length > 0) {
+      const ul = document.createElement('ul');
+      ul.className = 'kop-team-detail-list';
+      for (const n of names) {
+        const li = document.createElement('li');
+        li.textContent = n;
+        ul.append(li);
+      }
+      detail.append(ul);
+    }
+  };
+  if (hitNames.length > 0) {
+    addSection('is-hit', `${hitNames.length} av ${total} tippade ${teamName} hit:`, hitNames);
+  } else {
+    addSection('is-hit', `Ingen tippade ${teamName} hit.`, []);
+  }
+  if (missNames.length > 0) {
+    addSection('is-miss', `${missNames.length} av ${total} missade ${teamName}:`, missNames);
+  }
+  detail.hidden = false;
+  for (const btn of group.querySelectorAll('.kop-team-btn')) {
+    btn.setAttribute('aria-expanded', String(btn.dataset.team === tk));
+  }
+}
+
+function clearKoTeamDetail(group) {
+  const detail = group.querySelector('.kop-team-detail');
+  if (detail) { detail.hidden = true; detail.replaceChildren(); }
+  for (const btn of group.querySelectorAll('.kop-team-btn')) {
+    btn.setAttribute('aria-expanded', 'false');
+  }
+}
+
+function toggleKoTeam(roundKey, tk, teamName, guessersByTeam, group) {
+  const wasOpen = openKoTeam
+    && openKoTeam.roundKey === roundKey && openKoTeam.teamKey === tk;
+  for (const g of koPanelRoundsEl.querySelectorAll('.ko-round-group')) {
+    clearKoTeamDetail(g);
+  }
+  if (wasOpen) { openKoTeam = null; return; }
+  openKoTeam = { roundKey, teamKey: tk };
+  const total = Object.keys(knockoutByName ?? {}).length;
+  paintKoTeamDetail(group, teamName, tk, guessersByTeam, total);
+}
+
 function renderKnockoutPanel(facit) {
   const rounds = facit.rounds ?? {};
-  const sig = JSON.stringify([rounds.r32, rounds.r16, rounds.qf, rounds.sf, rounds.final, facit.winner]);
+  const sig = JSON.stringify([
+    rounds.r32, rounds.r16, rounds.qf, rounds.sf, rounds.final,
+    facit.winner, tipsLoaded,
+  ]);
   if (koPanelRoundsEl._sig === sig) return;
   koPanelRoundsEl._sig = sig;
+  const { byRound, total } = koGuessersByRound();
   const groups = [];
   for (const [key, label] of KO_PANEL_ROUNDS) {
     const teams = rounds[key] ?? [];
-    if (teams.length > 0) groups.push(koRoundGroup(label, teams));
+    if (teams.length > 0) {
+      groups.push(koRoundGroup(key, label, teams, tipsLoaded ? byRound[key] : null, total));
+    }
   }
-  if (facit.winner) groups.push(koRoundGroup('VM-vinnare', [facit.winner]));
+  if (facit.winner) {
+    groups.push(koRoundGroup(null, 'VM-vinnare', [facit.winner], null, total));
+  }
   koPanelEl.hidden = groups.length === 0;
   koPanelRoundsEl.replaceChildren(...groups);
+  // När det finns lag att räkna men tips ännu inte är laddade: kicka igång
+  // hämtningen och rita om panelen så fort den är klar (signaturen tar in
+  // tipsLoaded, så följande render byter ut chipsen mot knappar med räknare).
+  if (!tipsLoaded && groups.length > 0) {
+    ensureTips().then(() => { if (tipsLoaded) renderKnockoutPanel(facit); });
+  }
 }
 
 function tvBadge(ch) {

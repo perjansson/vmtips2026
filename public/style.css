@@ -216,13 +216,70 @@ body {
   justify-content: center; /* mobil: centrerat */
 }
 .kop-team {
-  font-size: 0.78rem;
+  font-size: 0.85rem;
   padding: 0.08rem 0.5rem;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.16);
   color: #f3fbf5;
   white-space: nowrap;
 }
+.kop-team-btn {
+  border: 0;
+  font-family: inherit;
+  font-weight: inherit;
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.kop-team-btn:hover { background: rgba(255, 255, 255, 0.22); }
+.kop-team-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.kop-team-btn[aria-expanded="true"] {
+  background: rgba(0, 0, 0, 0.32);
+}
+.kop-team-count {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.72rem;
+  font-weight: 700;
+  opacity: 0.9;
+  padding: 0 0.34rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.25);
+}
+.kop-team-detail {
+  margin: 0.4rem 0 0.1rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.5rem;
+  background: rgba(0, 0, 0, 0.22);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+.kop-team-detail[hidden] { display: none; }
+.kop-team-detail-h {
+  font-weight: 700;
+  margin-bottom: 0.3rem;
+  opacity: 0.95;
+}
+.kop-team-detail-h.is-miss {
+  margin-top: 0.55rem;
+  opacity: 0.75;
+}
+.kop-team-detail-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.6rem;
+}
+.kop-team-detail-list li::before {
+  content: '·';
+  margin-right: 0.35rem;
+  opacity: 0.55;
+}
+.kop-team-detail-list li:first-child::before { content: ''; margin: 0; }
 
 @media (min-width: 600px) {
   .ko-panel-toggle { display: none; }
