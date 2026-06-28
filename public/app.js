@@ -927,9 +927,9 @@ function detailRow(label, points, sub) {
 function knockoutRoundNodes(li, p, data, key, label) {
   const r = p.breakdown.knockout.rounds[key];
   const facitTeams = data.facit.rounds?.[key] ?? [];
-  const qualified = facitTeams.length > 0;
   const [dt, dd] = detailRow(label, `${r.points} p`, `${r.correct} rätt lag`);
-  if (!qualified) return [dt, dd];
+  // Alla ronder är utfällbara (visar deltagarens gissningar), även de där inga
+  // lag kvalat in än – då är alla gissningar grå tills lagen avgörs.
 
   const okey = `${p.name}:${key}`;
   const isOpen = openRounds.has(okey);
