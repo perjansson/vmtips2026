@@ -548,19 +548,108 @@ function closeOpenTips() {
   openPair = null;
 }
 
-async function toggleTips(fx, row, panel, inner) {
+async function togglePanel(fx, row, panel, inner) {
   if (openPair === fx.pair) { closeOpenTips(); return; }
   closeOpenTips();
   // Optimistiskt öppna direkt så klicket känns instant – panelen visar
-  // "Hämtar tips…" om prefetchen inte hunnit klart.
-  renderTipsInto(inner, fx);
+  // "Hämtar…" om prefetchen inte hunnit klart.
+  renderPanelInto(inner, fx);
   panel.dataset.open = 'true';
   row.setAttribute('aria-expanded', 'true');
   openPair = fx.pair;
   if (!tipsLoaded) {
     await ensureTips();
-    if (openPair === fx.pair) renderTipsInto(inner, fx);
+    if (openPair === fx.pair) renderPanelInto(inner, fx);
   }
+}
+
+// Väljer panelinnehåll: slutspelsmatch → avancemangs-/poängfördelning,
+// gruppmatch → allas tips.
+function renderPanelInto(inner, fx) {
+  if (fx.ko) renderKnockoutGameInto(inner, fx);
+  else renderTipsInto(inner, fx);
+}
+
+// Nästa rond en slutspelsmatchs vinnare går till (speglar src/liveKnockout.js).
+const KO_NEXT_ROUND = { r32: 'r16', r16: 'qf', qf: 'sf', sf: 'final', final: 'winner', third: null };
+
+// Panel för en slutspelsmatch. Före/efter spel: hur många som tippat hemma-
+// laget vidare till nästa rond, bortalaget, eller ingen. Under live: vilka som
+// just nu får poäng (5, eller 10 inför final) för att de tippat den ledande.
+function renderKnockoutGameInto(inner, fx) {
+  inner.replaceChildren();
+  if (!tipsLoaded) {
+    const p = document.createElement('p');
+    p.className = 'sg-tips-empty';
+    p.textContent = 'Hämtar…';
+    inner.append(p);
+    return;
+  }
+  const nextRound = KO_NEXT_ROUND[fx.ko];
+  if (!nextRound) {
+    const p = document.createElement('p');
+    p.className = 'sg-tips-empty';
+    p.textContent = 'Matchen ger inga slutspelspoäng.';
+    inner.append(p);
+    return;
+  }
+  const pts = nextRound === 'winner' ? 10 : 5;
+  const names = Object.keys(knockoutByName ?? {}).sort((a, b) => a.localeCompare(b, 'sv'));
+  const predicted = (name, team) => {
+    const g = knockoutByName?.[name];
+    if (!g || !team) return false;
+    const list = nextRound === 'winner' ? [g.winner].filter(Boolean) : (g[nextRound] ?? []);
+    return list.some((t) => teamKey(t) === teamKey(team));
+  };
+  const verb = nextRound === 'winner' ? 'som VM-vinnare' : 'vidare';
+  const live = liveByPair.get(fx.pair);
+  const isLive = live && live.status === 'live' && live.homeGoals != null && live.awayGoals != null;
+
+  if (isLive) {
+    const leader = live.homeGoals > live.awayGoals ? fx.home
+      : live.awayGoals > live.homeGoals ? fx.away : null;
+    const head = document.createElement('p');
+    head.className = 'kog-head';
+    if (!leader) {
+      head.textContent = `Oavgjort ${live.homeGoals}–${live.awayGoals} – inga poäng just nu.`;
+      inner.append(head);
+      return;
+    }
+    head.textContent = `${leader} leder ${live.homeGoals}–${live.awayGoals} → ${pts}p just nu till de som tippat ${leader} ${verb}:`;
+    inner.append(head);
+    const getters = names.filter((n) => predicted(n, leader));
+    const others = names.filter((n) => !predicted(n, leader));
+    inner.append(kogGroup(`Får ${pts}p nu`, getters, 'hit'));
+    inner.append(kogGroup('0p nu', others, 'miss'));
+    return;
+  }
+
+  const homeUsers = names.filter((n) => predicted(n, fx.home));
+  const awayUsers = names.filter((n) => predicted(n, fx.away));
+  const neither = names.filter((n) => !predicted(n, fx.home) && !predicted(n, fx.away));
+  inner.append(kogGroup(`${fx.home} ${verb}`, homeUsers, 'home'));
+  inner.append(kogGroup(`${fx.away} ${verb}`, awayUsers, 'away'));
+  if (neither.length) inner.append(kogGroup('Ingen av dem', neither, 'none'));
+}
+
+function kogGroup(label, names, cls) {
+  const wrap = document.createElement('div');
+  wrap.className = `kog-group kog-${cls}`;
+  const h = document.createElement('h4');
+  h.className = 'kog-h';
+  h.textContent = `${label} (${names.length})`;
+  wrap.append(h);
+  if (names.length) {
+    const ul = document.createElement('ul');
+    ul.className = 'kog-list';
+    for (const n of names) {
+      const li = document.createElement('li');
+      li.textContent = n;
+      ul.append(li);
+    }
+    wrap.append(ul);
+  }
+  return wrap;
 }
 
 // Starta prefetchen så snart som möjligt utan att blockera första målningen.
@@ -587,10 +676,12 @@ function gameRow(fx, scoreByPair) {
   const li = document.createElement('li');
   li.className = 'sg';
 
-  // Bara gruppmatcher är klickbara (visar allas tips). Slutspelsmatcher
-  // (ko: true) och platshållare (bara title) är icke-interaktiva div:ar – men
-  // slutspelsmatcher behåller fx.pair så de kan matcha live-resultat.
-  const clickable = fx.pair && !fx.ko;
+  // Matcher med kända lag är klickbara: gruppmatcher visar allas tips,
+  // slutspelsmatcher (ko: '<rond>') visar avancemangs-fördelning / live-poäng.
+  // Platshållare (bara title) är icke-interaktiva div:ar.
+  const isGroup = !!fx.pair && !fx.ko;
+  const isKnockout = !!fx.pair && !!fx.ko;
+  const clickable = isGroup || isKnockout;
   const row = document.createElement(clickable ? 'button' : 'div');
   row.className = 'sg-row';
   if (clickable) row.type = 'button';
@@ -633,7 +724,7 @@ function gameRow(fx, scoreByPair) {
       badge.textContent = 'Ej bekräftat';
       badge.dataset.unconfirmed = 'true';
     }
-    if (clickable) {
+    if (isGroup) {
       // Tryckbar: öppnar Googles livescore-kort i ny flik. Routas via radens
       // klickhanterare (en <a> får inte ligga i <button>), så övriga klick på
       // raden fäller fortfarande ut tipspanelen.
@@ -646,7 +737,7 @@ function gameRow(fx, scoreByPair) {
       link.append(sc, badge);
       meta.append(link);
     } else {
-      // Slutspelsmatch: visa live-resultatet men utan interaktion.
+      // Slutspelsmatch: scoreline utan Google-länk (klick öppnar panelen).
       meta.append(sc, badge);
     }
   }
@@ -670,7 +761,7 @@ function gameRow(fx, scoreByPair) {
     const isOpen = fx.pair === openPair;
     panel.dataset.open = isOpen ? 'true' : 'false';
     row.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-    if (isOpen) renderTipsInto(inner, fx);
+    if (isOpen) renderPanelInto(inner, fx);
 
     row.addEventListener('click', (e) => {
       const link = e.target.closest('.sg-live-link');
@@ -678,7 +769,7 @@ function gameRow(fx, scoreByPair) {
         window.open(link.dataset.href, '_blank', 'noopener');
         return;
       }
-      toggleTips(fx, row, panel, inner);
+      togglePanel(fx, row, panel, inner);
     });
     li.append(panel);
   }

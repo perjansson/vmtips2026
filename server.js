@@ -84,6 +84,7 @@ function buildKnockoutByName() {
       qf: r.qf ?? [],
       sf: r.sf ?? [],
       final: r.final ?? [],
+      winner: r.winner ?? null,
     };
   }
   return out;

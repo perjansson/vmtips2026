@@ -9,9 +9,9 @@
 //
 // Fält per dag: date (ISO), label, tv4 ('Per' | 'Tomas' | null = endast SVT).
 // Fält per match: time ('HH:MM'), ch ('TV4' | 'SVT'), och antingen
-// {home, away} (gruppmatch), {home, away, ko: true} (slutspelsmatch med kända
-// lag – visas och kan få live-resultat men är INTE klickbar som en gruppmatch
-// och räknas inte som gruppmatch) eller {title, note?} (platshållare).
+// {home, away} (gruppmatch), {home, away, ko: '<rond>'} (slutspelsmatch med
+// kända lag; ko är rondtypen 'r32'|'r16'|'qf'|'sf'|'final' så klienten vet
+// nästa rond – räknas inte som gruppmatch) eller {title, note?} (platshållare).
 
 window.SCHEDULE = [
   { date: '2026-06-11', label: 'Tor 11 juni', tv4: 'Per', games: [
@@ -121,34 +121,34 @@ window.SCHEDULE = [
     { time: '01:30', home: 'Colombia', away: 'Portugal', ch: 'TV4' },
     { time: '04:00', home: 'Algeriet', away: 'Österrike', ch: 'TV4' },
     { time: '04:00', home: 'Jordanien', away: 'Argentina', ch: 'TV4' },
-    { time: '21:00', home: 'Sydafrika', away: 'Kanada', ch: 'TV4', ko: true, stageStart: '16-delsfinal' },
+    { time: '21:00', home: 'Sydafrika', away: 'Kanada', ch: 'TV4', ko: 'r32', stageStart: '16-delsfinal' },
   ] },
   { date: '2026-06-29', label: 'Mån 29 juni', tv4: 'Tomas', games: [
-    { time: '19:00', home: 'Brasilien', away: 'Japan', ch: 'TV4', ko: true },
-    { time: '22:30', home: 'Tyskland', away: 'Paraguay', ch: 'SVT', ko: true },
+    { time: '19:00', home: 'Brasilien', away: 'Japan', ch: 'TV4', ko: 'r32' },
+    { time: '22:30', home: 'Tyskland', away: 'Paraguay', ch: 'SVT', ko: 'r32' },
   ] },
   { date: '2026-06-30', label: 'Tis 30 juni', tv4: 'Tomas', games: [
-    { time: '03:00', home: 'Nederländerna', away: 'Marocko', ch: 'SVT', ko: true },
-    { time: '19:00', home: 'Elfenbenskusten', away: 'Norge', ch: 'TV4', ko: true },
-    { time: '23:00', home: 'Frankrike', away: 'Sverige', ch: 'TV4', ko: true },
+    { time: '03:00', home: 'Nederländerna', away: 'Marocko', ch: 'SVT', ko: 'r32' },
+    { time: '19:00', home: 'Elfenbenskusten', away: 'Norge', ch: 'TV4', ko: 'r32' },
+    { time: '23:00', home: 'Frankrike', away: 'Sverige', ch: 'TV4', ko: 'r32' },
   ] },
   { date: '2026-07-01', label: 'Ons 1 juli', tv4: 'Per', games: [
-    { time: '03:00', home: 'Mexiko', away: 'Ecuador', ch: 'TV4', ko: true },
-    { time: '18:00', home: 'England', away: 'DR Kongo', ch: 'SVT', ko: true },
-    { time: '22:00', home: 'Belgien', away: 'Senegal', ch: 'TV4', ko: true },
+    { time: '03:00', home: 'Mexiko', away: 'Ecuador', ch: 'TV4', ko: 'r32' },
+    { time: '18:00', home: 'England', away: 'DR Kongo', ch: 'SVT', ko: 'r32' },
+    { time: '22:00', home: 'Belgien', away: 'Senegal', ch: 'TV4', ko: 'r32' },
   ] },
   { date: '2026-07-02', label: 'Tor 2 juli', tv4: 'Per', games: [
-    { time: '02:00', home: 'USA', away: 'Bosnien och Hercegovina', ch: 'TV4', ko: true },
-    { time: '21:00', home: 'Spanien', away: 'Österrike', ch: 'SVT', ko: true },
+    { time: '02:00', home: 'USA', away: 'Bosnien och Hercegovina', ch: 'TV4', ko: 'r32' },
+    { time: '21:00', home: 'Spanien', away: 'Österrike', ch: 'SVT', ko: 'r32' },
   ] },
   { date: '2026-07-03', label: 'Fre 3 juli', tv4: 'Tomas', games: [
-    { time: '01:00', home: 'Portugal', away: 'Kroatien', ch: 'TV4', ko: true },
-    { time: '05:00', home: 'Schweiz', away: 'Algeriet', ch: 'TV4', ko: true },
-    { time: '20:00', home: 'Australien', away: 'Egypten', ch: 'TV4', ko: true },
+    { time: '01:00', home: 'Portugal', away: 'Kroatien', ch: 'TV4', ko: 'r32' },
+    { time: '05:00', home: 'Schweiz', away: 'Algeriet', ch: 'TV4', ko: 'r32' },
+    { time: '20:00', home: 'Australien', away: 'Egypten', ch: 'TV4', ko: 'r32' },
   ] },
   { date: '2026-07-04', label: 'Lör 4 juli', tv4: 'Tomas', games: [
-    { time: '00:00', home: 'Argentina', away: 'Kap Verde', ch: 'SVT', ko: true },
-    { time: '03:30', home: 'Colombia', away: 'Ghana', ch: 'SVT', ko: true },
+    { time: '00:00', home: 'Argentina', away: 'Kap Verde', ch: 'SVT', ko: 'r32' },
+    { time: '03:30', home: 'Colombia', away: 'Ghana', ch: 'SVT', ko: 'r32' },
     { time: '19:00', title: 'Åttondelsfinal (match 90)', ch: 'TV4', stageStart: 'Åttondelsfinal' },
     { time: '23:00', title: 'Åttondelsfinal (match 89)', ch: 'SVT' },
   ] },

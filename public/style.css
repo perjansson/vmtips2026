@@ -567,6 +567,36 @@ button.sg-row:focus-visible {
   opacity: 0.7;
 }
 
+/* Slutspelsmatch-panel: avancemangsfördelning / live-poäng. */
+.kog-head {
+  margin: 0 0 0.45rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.kog-group { margin: 0.45rem 0 0; }
+.kog-h {
+  margin: 0 0 0.15rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+.kog-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.1rem 0.65rem;
+  font-size: 0.82rem;
+  opacity: 0.92;
+}
+.kog-list li { white-space: nowrap; }
+.kog-hit .kog-h { color: #5ee098; }
+.kog-home .kog-h,
+.kog-away .kog-h { color: #f3fbf5; }
+.kog-miss .kog-h,
+.kog-none .kog-h { opacity: 0.6; }
+
 @media (prefers-reduced-motion: reduce) {
   .sg-tips { transition: none; }
 }
