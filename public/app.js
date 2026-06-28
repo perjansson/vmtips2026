@@ -352,6 +352,8 @@ let lastResultByPair = new Map();
 // payloadens live-block. Tomt när inget pågår. Arket vinner: visas bara för
 // matcher som ännu saknar bekräftat resultat.
 let liveByPair = new Map();
+// Avslutade slutspelsmatchers slutresultat (pair → "h–a"), enbart för visning.
+let koResultByPair = new Map();
 
 // Tipsregler: 3 p rätt utgång + 1 p per prickat målantal (max 5).
 function tipPoints(t, result) {
@@ -674,11 +676,14 @@ function gameRow(fx, scoreByPair) {
   meta.className = 'sg-meta';
   const score = fx.pair ? scoreByPair.get(fx.pair) : undefined;
   const live = (!score && fx.pair) ? liveByPair.get(fx.pair) : undefined;
+  // Avslutad slutspelsmatch: slutresultatet från feeden visas (arket saknar
+  // det). Endast visning – poängen kommer från avancemanget.
+  const koResult = (!score && !live && isKnockout) ? koResultByPair.get(fx.pair) : undefined;
   if (live && live.status === 'live') li.classList.add('sg-live');
-  if (score) {
+  if (score || koResult) {
     const sc = document.createElement('span');
     sc.className = 'sg-score';
-    sc.textContent = score;
+    sc.textContent = score ?? koResult;
     meta.append(sc);
   } else if (live && live.homeGoals != null && live.awayGoals != null) {
     const sc = document.createElement('span');
@@ -756,7 +761,8 @@ function daySig(day, fixtures, scoreByPair, past, current) {
     const score = fx.pair ? (scoreByPair.get(fx.pair) ?? '') : '';
     const lm = fx.pair ? liveByPair.get(fx.pair) : null;
     const liveSig = lm ? `${lm.homeGoals}-${lm.awayGoals}-${lm.status}` : '';
-    s += `\n${fx.time}|${fx.pair ?? fx.title ?? ''}|${score}|${liveSig}|${fx.note ?? ''}|${fx.ch}`;
+    const koRes = fx.ko && fx.pair ? (koResultByPair.get(fx.pair) ?? '') : '';
+    s += `\n${fx.time}|${fx.pair ?? fx.title ?? ''}|${score}|${liveSig}|${koRes}|${fx.note ?? ''}|${fx.ch}`;
   }
   return s;
 }
@@ -1181,10 +1187,13 @@ function renderRecentKo(li, name) {
       document.createTextNode(' – '),
       koupTeam(fx.away, teamKey(fx.away) === teamKey(fx.advancer)),
     );
+    const scoreSpan = document.createElement('span');
+    scoreSpan.className = 'koup-score';
+    scoreSpan.textContent = koResultByPair.get(fx.pair) ?? '';
     const ptsSpan = document.createElement('span');
     ptsSpan.className = gotIt ? 'koup-pts koup-pts-hit' : 'koup-pts';
     ptsSpan.textContent = gotIt ? `+${pts}p` : '0p';
-    item.append(date, teams, ptsSpan);
+    item.append(date, teams, scoreSpan, ptsSpan);
     return item;
   }));
   section.hidden = false;
@@ -1411,6 +1420,7 @@ function render(data) {
     { h: m.homeGoals, a: m.awayGoals },
   ]));
   liveByPair = new Map((data.live?.matches ?? []).map((m) => [m.pair, m]));
+  koResultByPair = new Map((data.koResults ?? []).map((m) => [m.pair, `${m.homeGoals}–${m.awayGoals}`]));
   renderSchedule(scoreByPair);
   // Klienttid — synkar visning med faktisk poll-cykel även när servern inte
   // har räknat om sin payload mellan två polls.

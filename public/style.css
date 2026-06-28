@@ -1051,8 +1051,16 @@ main {
 .koup-teams { flex: 1; min-width: 0; font-size: 0.86rem; }
 .koup-hit { color: var(--ink); font-weight: 700; }
 .koup-miss { color: var(--ink-soft); }
+.koup-score {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 0.82rem;
+}
 .koup-pts {
   flex: none;
+  width: 2.4rem;
+  text-align: right;
   font-variant-numeric: tabular-nums;
   font-weight: 700;
   font-size: 0.82rem;

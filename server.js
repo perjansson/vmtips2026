@@ -224,6 +224,11 @@ function recompute() {
     provider: liveProvider.name,
     updatedAt: state.liveUpdatedAt ? state.liveUpdatedAt.toISOString() : null,
   };
+  // Avslutade slutspelsmatchers slutresultat (från feeden, behålls även efter
+  // att arket har avancemanget). Endast för visning – påverkar inga poäng.
+  standings.koResults = [...state.settledRounds.entries()].map(([pair, m]) => ({
+    pair, homeGoals: m.homeGoals, awayGoals: m.awayGoals,
+  }));
 
   state.updatedAt = new Date();
   state.payload = {
