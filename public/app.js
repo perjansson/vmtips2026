@@ -38,8 +38,16 @@ SCHED_DAYS.forEach((day, dayIndex) => {
   });
 });
 
-// Antalet gruppmatcher i hela turneringen – nämnaren i tvilling-räknaren.
-const TOTAL_GROUP_MATCHES = FIXTURES_BY_DAY.flat().filter((fx) => fx.pair && !fx.ko).length;
+// Slutspelsmatcher med kända lag, kronologiskt – för "kommande slutspel" i korten.
+const KO_FIXTURES = SCHED_DAYS
+  .flatMap((day, di) => FIXTURES_BY_DAY[di]
+    .filter((fx) => fx.ko && fx.pair)
+    .map((fx) => ({ ...fx, date: day.date })))
+  .sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`));
+// Kommande (ej avgjorda) resp. nyligen avgjorda slutspelsmatcher – delade
+// mellan alla deltagarkort, räknas ut en gång per render.
+let upcomingKoGames = [];
+let recentKoGames = [];
 
 const DAYS_PER_CLICK = 2;   // antal extra matchdagar per "Visa fler/tidigare"-klick
 let extraDays = 0;          // utökar fönstrets bakre kant framåt
@@ -330,7 +338,6 @@ function tvBadge(ch) {
 // grupperade på utfall. Bara en panel öppen åt gången.
 
 let tipsByPair = new Map();
-let tipsByName = null; // Lazily inverterad: Map<namn, Map<pair, {h, a}>>
 let knockoutByName = null; // namn → { r32, r16, ... } slutspelsgissningar (statiskt)
 const openRounds = new Set(); // "namn:rond" som är expanderade i detaljkortet
 let tipsLoaded = false;
@@ -363,49 +370,12 @@ async function ensureTips() {
       .then((d) => {
         tipsByPair = new Map(Object.entries(d.tipsByPair ?? {}));
         knockoutByName = d.knockoutByName ?? {};
-        tipsByName = null; // ny data → invalidera invertering
         tipsLoaded = true;
       })
       .catch((err) => { console.error('match-tips:', err.message); })
       .finally(() => { tipsPromise = null; });
   }
   return tipsPromise;
-}
-
-// Invertera tipsByPair till per-namn lookup. Memo:as så återbesök är O(1).
-function getTipsByName() {
-  if (!tipsLoaded) return null;
-  if (tipsByName) return tipsByName;
-  const byName = new Map();
-  for (const [pair, list] of tipsByPair) {
-    for (const t of list) {
-      let m = byName.get(t.name);
-      if (!m) byName.set(t.name, m = new Map());
-      m.set(pair, { h: t.h, a: t.a });
-    }
-  }
-  tipsByName = byName;
-  return tipsByName;
-}
-
-// Top-3 deltagare som har flest identiska tips (exakt målantal) som `name`.
-function findTwins(name) {
-  const byName = getTipsByName();
-  if (!byName) return [];
-  const mine = byName.get(name);
-  if (!mine || mine.size === 0) return [];
-  const scores = [];
-  for (const [other, theirs] of byName) {
-    if (other === name) continue;
-    let count = 0;
-    for (const [pair, t] of mine) {
-      const u = theirs.get(pair);
-      if (u && u.h === t.h && u.a === t.a) count++;
-    }
-    scores.push({ name: other, count });
-  }
-  scores.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'sv'));
-  return scores.slice(0, 3);
 }
 
 // Säkert DOM-id från pair-nyckeln (lagnamn kan innehålla mellanslag, accenter, |).
@@ -1113,28 +1083,108 @@ function renderMatchSection(li, selector, matches, played) {
 
 // Top-3 "tvillingar" för en deltagare. Visas så fort tipsByPair finns
 // (prefetchat efter första målning); annars förblir sektionen dold.
-function renderTwins(li, name) {
-  const section = li.querySelector('.twin-section');
-  if (!tipsLoaded) { section.hidden = true; return; }
-  const twins = findTwins(name);
-  if (twins.length === 0) { section.hidden = true; return; }
-  const ul = section.querySelector('.twin-list');
-  ul.replaceChildren(...twins.map((t) => {
+// Kommande (ej avgjorda) slutspelsmatcher med kända lag, kronologiskt. Beror
+// inte på deltagare → räknas ut en gång per render (upcomingKoGames).
+function computeUpcomingKo(facitRounds) {
+  const out = [];
+  for (const fx of KO_FIXTURES) {
+    const next = KO_NEXT_ROUND[fx.ko];
+    if (!next) continue;
+    const decided = next === 'winner'
+      ? new Set([facitRounds?.winner].filter(Boolean).map(teamKey))
+      : new Set((facitRounds?.[next] ?? []).map(teamKey));
+    if (!decided.has(teamKey(fx.home)) && !decided.has(teamKey(fx.away))) {
+      out.push(fx);
+      if (out.length >= 8) break; // de närmaste 8 räcker; håller korten korta
+    }
+  }
+  return out;
+}
+
+// Nyligen avgjorda slutspelsmatcher (senaste först), med vinnaren (advancer).
+function computeRecentKo(facitRounds) {
+  const out = [];
+  for (const fx of [...KO_FIXTURES].reverse()) {
+    const next = KO_NEXT_ROUND[fx.ko];
+    if (!next) continue;
+    const decided = next === 'winner'
+      ? new Set([facitRounds?.winner].filter(Boolean).map(teamKey))
+      : new Set((facitRounds?.[next] ?? []).map(teamKey));
+    const homeAdv = decided.has(teamKey(fx.home));
+    const awayAdv = decided.has(teamKey(fx.away));
+    if (!homeAdv && !awayAdv) continue; // ej avgjord
+    out.push({ ...fx, next, advancer: homeAdv ? fx.home : fx.away });
+    if (out.length >= 8) break;
+  }
+  return out;
+}
+
+function koupTeam(name, predicted) {
+  const span = document.createElement('span');
+  span.className = predicted ? 'koup-team koup-hit' : 'koup-team koup-miss';
+  span.textContent = name;
+  if (predicted) span.title = `${name} – din gissning vidare`;
+  return span;
+}
+
+// Kommande slutspelsmatcher i deltagarkortet: lag deltagaren tippat vidare till
+// nästa rond markeras (vit), övriga grått – så man ser om man har en häst i
+// loppet. upcomingKoGames är delad; bara per-deltagare-markeringen är unik.
+function renderKoUpcoming(li, name) {
+  const section = li.querySelector('.ko-upcoming');
+  if (!tipsLoaded || upcomingKoGames.length === 0) { section.hidden = true; return; }
+  const ul = section.querySelector('.match-list');
+  ul.replaceChildren(...upcomingKoGames.map((fx) => {
+    const next = KO_NEXT_ROUND[fx.ko];
+    const g = knockoutByName?.[name];
+    const predList = g ? (next === 'winner' ? [g.winner].filter(Boolean) : (g[next] ?? [])) : [];
+    const predSet = new Set(predList.map(teamKey));
     const item = document.createElement('li');
-    item.className = 'twin-row';
-    const nm = document.createElement('span');
-    nm.className = 'twin-name';
-    nm.textContent = t.name;
-    const track = document.createElement('span');
-    track.className = 'twin-track';
-    const fill = document.createElement('span');
-    fill.className = 'twin-fill';
-    fill.style.width = `${Math.round((t.count / TOTAL_GROUP_MATCHES) * 100)}%`;
-    track.append(fill);
-    const val = document.createElement('span');
-    val.className = 'twin-val';
-    val.textContent = `${t.count} / ${TOTAL_GROUP_MATCHES}`;
-    item.append(nm, track, val);
+    item.className = 'koup-row';
+    const date = document.createElement('span');
+    date.className = 'match-date';
+    date.textContent = shortDate(fx.date);
+    const teams = document.createElement('span');
+    teams.className = 'koup-teams';
+    teams.append(
+      koupTeam(fx.home, predSet.has(teamKey(fx.home))),
+      document.createTextNode(' – '),
+      koupTeam(fx.away, predSet.has(teamKey(fx.away))),
+    );
+    item.append(date, teams);
+    return item;
+  }));
+  section.hidden = false;
+}
+
+// Senaste avgjorda slutspelsmatcher: vinnaren markeras (vit), och deltagarens
+// poäng för matchen visas – +5p (10p inför final) om hen tippat vinnaren vidare,
+// annars 0p.
+function renderRecentKo(li, name) {
+  const section = li.querySelector('.ko-recent');
+  if (!tipsLoaded || recentKoGames.length === 0) { section.hidden = true; return; }
+  const ul = section.querySelector('.match-list');
+  ul.replaceChildren(...recentKoGames.map((fx) => {
+    const g = knockoutByName?.[name];
+    const predList = g ? (fx.next === 'winner' ? [g.winner].filter(Boolean) : (g[fx.next] ?? [])) : [];
+    const gotIt = predList.map(teamKey).includes(teamKey(fx.advancer));
+    const pts = fx.next === 'winner' ? 10 : 5;
+    const item = document.createElement('li');
+    item.className = 'koup-row';
+    const date = document.createElement('span');
+    date.className = 'match-date';
+    date.textContent = shortDate(fx.date);
+    const teams = document.createElement('span');
+    teams.className = 'koup-teams';
+    teams.append(
+      koupTeam(fx.home, teamKey(fx.home) === teamKey(fx.advancer)),
+      document.createTextNode(' – '),
+      koupTeam(fx.away, teamKey(fx.away) === teamKey(fx.advancer)),
+    );
+    const ptsSpan = document.createElement('span');
+    ptsSpan.className = gotIt ? 'koup-pts koup-pts-hit' : 'koup-pts';
+    ptsSpan.textContent = gotIt ? `+${pts}p` : '0p';
+    item.append(date, teams, ptsSpan);
     return item;
   }));
   section.hidden = false;
@@ -1155,9 +1205,10 @@ function renderDetail(li, p, data) {
     data.facit.winner ? (winnerHit ? 'rätt!' : 'fel') : 'ej avgjort',
   ));
   dl.replaceChildren(...nodes);
-  renderTwins(li, p.name);
   renderMatchSection(li, '.match-recent', p.matches.recent, true);
   renderMatchSection(li, '.match-upcoming', p.matches.upcoming, false);
+  renderRecentKo(li, p.name);
+  renderKoUpcoming(li, p.name);
 }
 
 function renderRow(li, p, data) {
@@ -1331,6 +1382,9 @@ function flipReorder(orderedRows) {
 
 function render(data) {
   if (checkBuildChange(data)) return; // ny deploy upptäckt – reload pågår
+  // En gång per render (delas av alla kort): kommande/senaste slutspelsmatcher.
+  upcomingKoGames = computeUpcomingKo(data.facit.rounds);
+  recentKoGames = computeRecentKo(data.facit.rounds);
   const ordered = data.participants.map((p) => {
     let li = rowsByName.get(p.name);
     if (!li) {
