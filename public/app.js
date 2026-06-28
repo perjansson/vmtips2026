@@ -39,7 +39,7 @@ SCHED_DAYS.forEach((day, dayIndex) => {
 });
 
 // Antalet gruppmatcher i hela turneringen – nämnaren i tvilling-räknaren.
-const TOTAL_GROUP_MATCHES = FIXTURES_BY_DAY.flat().filter((fx) => fx.pair).length;
+const TOTAL_GROUP_MATCHES = FIXTURES_BY_DAY.flat().filter((fx) => fx.pair && !fx.ko).length;
 
 const DAYS_PER_CLICK = 2;   // antal extra matchdagar per "Visa fler/tidigare"-klick
 let extraDays = 0;          // utökar fönstrets bakre kant framåt
@@ -587,11 +587,13 @@ function gameRow(fx, scoreByPair) {
   const li = document.createElement('li');
   li.className = 'sg';
 
-  // Gruppmatcher (med pair) är klickbara — bygg som <button>. Slutspels-
-  // platshållare (bara title) är icke-interaktiva div:ar.
-  const row = document.createElement(fx.pair ? 'button' : 'div');
+  // Bara gruppmatcher är klickbara (visar allas tips). Slutspelsmatcher
+  // (ko: true) och platshållare (bara title) är icke-interaktiva div:ar – men
+  // slutspelsmatcher behåller fx.pair så de kan matcha live-resultat.
+  const clickable = fx.pair && !fx.ko;
+  const row = document.createElement(clickable ? 'button' : 'div');
   row.className = 'sg-row';
-  if (fx.pair) row.type = 'button';
+  if (clickable) row.type = 'button';
 
   const time = document.createElement('span');
   time.className = 'sg-time';
@@ -631,24 +633,29 @@ function gameRow(fx, scoreByPair) {
       badge.textContent = 'Ej bekräftat';
       badge.dataset.unconfirmed = 'true';
     }
-    // Tryckbar: öppnar Googles livescore-kort i ny flik. Routas via radens
-    // klickhanterare (en <a> får inte ligga i <button>), så övriga klick på
-    // raden fäller fortfarande ut tipspanelen.
-    const link = document.createElement('span');
-    link.className = 'sg-live-link';
-    if (live.status === 'live') link.dataset.live = 'true';
-    link.dataset.href = `https://www.google.com/search?q=${encodeURIComponent(`${fx.home} ${fx.away}`)}`;
-    link.setAttribute('role', 'link');
-    link.title = `Öppna livescore för ${fx.home}–${fx.away}`;
-    link.append(sc, badge);
-    meta.append(link);
+    if (clickable) {
+      // Tryckbar: öppnar Googles livescore-kort i ny flik. Routas via radens
+      // klickhanterare (en <a> får inte ligga i <button>), så övriga klick på
+      // raden fäller fortfarande ut tipspanelen.
+      const link = document.createElement('span');
+      link.className = 'sg-live-link';
+      if (live.status === 'live') link.dataset.live = 'true';
+      link.dataset.href = `https://www.google.com/search?q=${encodeURIComponent(`${fx.home} ${fx.away}`)}`;
+      link.setAttribute('role', 'link');
+      link.title = `Öppna livescore för ${fx.home}–${fx.away}`;
+      link.append(sc, badge);
+      meta.append(link);
+    } else {
+      // Slutspelsmatch: visa live-resultatet men utan interaktion.
+      meta.append(sc, badge);
+    }
   }
   meta.append(tvBadge(fx.ch));
 
   row.append(time, title, meta);
   li.append(row);
 
-  if (fx.pair) {
+  if (clickable) {
     const panel = document.createElement('div');
     panel.className = 'sg-tips';
     panel.id = pairId(fx.pair);

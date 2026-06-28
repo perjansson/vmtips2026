@@ -391,7 +391,9 @@ body {
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: baseline;
   column-gap: 0.5rem;
-  font-size: 0.84rem;
+  /* inherit (inte 0.84rem) så icke-knapp-rader (slutspel/platshållare) får
+     samma storlek som knapp-raderna, vilka redan ärver via font: inherit. */
+  font-size: inherit;
   padding: 0.12rem 0;
   width: 100%;
 }
