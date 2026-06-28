@@ -384,6 +384,28 @@ body {
 /* En .sg är en match-rad + (för gruppmatcher) en expanderbar tipspanel. */
 .sg { display: block; }
 
+/* Avdelare där en ny slutspelsrond börjar – centrerad etikett med linjer. */
+.sg-stage {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.5rem 0 0.15rem;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.72;
+}
+.sg-stage::before,
+.sg-stage::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.35;
+}
+
 /* Grid: tid | titel (krymper med ellips) | resultat+TV. 1fr-kolumnen
    absorberar bredden så raden aldrig spiller över skärmkanten. */
 .sg-row {

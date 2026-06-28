@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { fetchTab, fetchParticipants } from './src/sheetClient.js';
 import { createSheetResultProvider } from './src/resultProvider.js';
 import { createLiveProvider } from './src/liveProvider.js';
-import { computeStandingsWithLive, captureSettled } from './src/liveStandings.js';
+import { computeStandingsWithLive, captureSettled, captureSettledRounds } from './src/liveStandings.js';
 import { isInLiveWindow } from './src/liveWindow.js';
 import { computeStandings } from './src/standings.js';
 import { matchPairKey, teamKey } from './src/parse.js';
@@ -44,7 +44,8 @@ const state = {
   tipsByPair: null, // alla deltagares gruppmatchstips, grupperat på pair-nyckeln
   knockoutByName: null, // namn → { r32, r16, qf, sf, final } slutspelsgissningar
   live: [], // pågående matcher (transient), [] när inget spelas just nu
-  settled: new Map(), // pair → avslutat feed-resultat, behålls tills arket har det
+  settled: new Map(), // pair → avslutat grupp-resultat, behålls tills arket har det
+  settledRounds: new Map(), // pair → avslutad slutspelsmatch (vinnare → nästa rond)
   settledSeeded: false, // har vi pollat minst en gång (seedat settled)?
   liveUpdatedAt: null,
   updatedAt: null,
@@ -149,7 +150,7 @@ function recompute() {
   // pågående matcher blir live-överlägg. Resten räknar på det "effektiva"
   // facit:et så avslutade matcher visas precis som arkbekräftade resultat.
   // Avslutade resultat (beständiga, även mellan live-fönster) + pågående matcher.
-  const live = [...state.settled.values(), ...state.live];
+  const live = [...state.settled.values(), ...state.settledRounds.values(), ...state.live];
   const { standings, effectiveFacit, liveView } = computeStandingsWithLive({
     participants: state.participants,
     predictionsByName: state.predictionsByName,
@@ -296,6 +297,7 @@ async function refreshLive() {
     }
     const snap = await liveProvider.getLive();
     captureSettled(state.settled, snap);
+    captureSettledRounds(state.settledRounds, snap);
     state.live = (Array.isArray(snap) ? snap : []).filter((m) => m.status === 'live');
     state.settledSeeded = true;
     state.liveUpdatedAt = new Date();

@@ -1,25 +1,48 @@
 import { computeStandings } from './standings.js';
 import { mergeLiveIntoFacit } from './liveMerge.js';
 import { buildLiveView } from './liveView.js';
+import { isKnockoutType, applyLiveKnockout } from './liveKnockout.js';
 import { matchPairKey } from './parse.js';
 
-// Plockar avslutade matcher ur ett live-snapshot in i en beständig karta
-// (pair → resultat). Avslutade resultat ska behållas som "settled" även när
-// live-fönstret stängt och vi slutar polla – tills arket har resultatet (då
-// vinner arket ändå via merge-only-empty). Pågående matcher fångas inte.
+// Plockar avslutade GRUPPmatcher ur ett live-snapshot in i en beständig karta
+// (pair → resultat). Behålls som "settled" även när live-fönstret stängt och vi
+// slutar polla – tills arket har resultatet (då vinner arket via merge-only-
+// empty). Pågående matcher och slutspelsmatcher fångas inte här.
 export function captureSettled(settled, snapshot) {
   for (const m of snapshot ?? []) {
-    if (m.status === 'finished' && m.homeGoals != null && m.awayGoals != null) {
+    if (m.status === 'finished' && !isKnockoutType(m.type)
+      && m.homeGoals != null && m.awayGoals != null) {
       settled.set(matchPairKey(m), {
         home: m.home,
         away: m.away,
         homeGoals: m.homeGoals,
         awayGoals: m.awayGoals,
         status: 'finished',
+        type: 'group',
       });
     }
   }
   return settled;
+}
+
+// Som captureSettled, fast för avslutade SLUTSPELsmatcher (sparar typen så
+// vinnaren kan vävas in i rätt rond). applyLiveKnockout avgör vinnare och
+// arket-vinner-logiken; oavgjorda (straff) bidrar inget förrän arket har dem.
+export function captureSettledRounds(settledRounds, snapshot) {
+  for (const m of snapshot ?? []) {
+    if (m.status === 'finished' && isKnockoutType(m.type)
+      && m.homeGoals != null && m.awayGoals != null) {
+      settledRounds.set(matchPairKey(m), {
+        home: m.home,
+        away: m.away,
+        homeGoals: m.homeGoals,
+        awayGoals: m.awayGoals,
+        status: 'finished',
+        type: m.type,
+      });
+    }
+  }
+  return settledRounds;
 }
 
 // Live-aware ställning. Snapshotet delas i två:
@@ -31,16 +54,27 @@ export function captureSettled(settled, snapshot) {
 export function computeStandingsWithLive({ participants, predictionsByName, facit, live = [] }) {
   const finished = live.filter((m) => m.status === 'finished');
   const inPlay = live.filter((m) => m.status === 'live');
+  const groupFinished = finished.filter((m) => !isKnockoutType(m.type));
+  const koFinished = finished.filter((m) => isKnockoutType(m.type));
+  const groupInPlay = inPlay.filter((m) => !isKnockoutType(m.type));
 
-  const effectiveFacit = finished.length ? mergeLiveIntoFacit(facit, finished) : facit;
+  // Effektivt facit: avslutade gruppmatcher fylls i .matches, avslutade
+  // slutspelsmatcher väver in vinnaren i nästa rond i .rounds. Arket vinner.
+  const effectiveFacit = {
+    ...facit,
+    matches: groupFinished.length ? mergeLiveIntoFacit(facit, groupFinished).matches : facit.matches,
+    rounds: koFinished.length ? applyLiveKnockout(facit.rounds, koFinished) : facit.rounds,
+  };
   const standings = computeStandings({ participants, predictionsByName, facit: effectiveFacit });
 
-  let liveView = { byName: {}, matches: [] };
-  if (inPlay.length) {
-    const liveFacit = mergeLiveIntoFacit(effectiveFacit, inPlay);
-    const prov = computeStandings({ participants, predictionsByName, facit: liveFacit });
-    liveView = buildLiveView(standings.participants, prov.participants, inPlay);
+  // Live-överlägg: bara pågående GRUPPmatcher ger pulsande delta. live.matches
+  // (schemats brickor) visar ALLA pågående matcher som scoreline, även slutspel.
+  let prov = standings;
+  if (groupInPlay.length) {
+    const liveFacit = { ...effectiveFacit, matches: mergeLiveIntoFacit(effectiveFacit, groupInPlay).matches };
+    prov = computeStandings({ participants, predictionsByName, facit: liveFacit });
   }
+  const liveView = buildLiveView(standings.participants, prov.participants, inPlay);
 
   // Fäst live-delta och rangordna om på den live-inkluderade totalen, så att
   // ordning och placering speglar det som faktiskt visas (bastotal + live).

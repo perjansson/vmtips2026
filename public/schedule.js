@@ -121,7 +121,7 @@ window.SCHEDULE = [
     { time: '01:30', home: 'Colombia', away: 'Portugal', ch: 'TV4' },
     { time: '04:00', home: 'Algeriet', away: 'Österrike', ch: 'TV4' },
     { time: '04:00', home: 'Jordanien', away: 'Argentina', ch: 'TV4' },
-    { time: '21:00', home: 'Sydafrika', away: 'Kanada', ch: 'TV4', ko: true },
+    { time: '21:00', home: 'Sydafrika', away: 'Kanada', ch: 'TV4', ko: true, stageStart: '16-delsfinal' },
   ] },
   { date: '2026-06-29', label: 'Mån 29 juni', tv4: 'Tomas', games: [
     { time: '19:00', home: 'Brasilien', away: 'Japan', ch: 'TV4', ko: true },
@@ -149,7 +149,7 @@ window.SCHEDULE = [
   { date: '2026-07-04', label: 'Lör 4 juli', tv4: 'Tomas', games: [
     { time: '00:00', home: 'Argentina', away: 'Kap Verde', ch: 'SVT', ko: true },
     { time: '03:30', home: 'Colombia', away: 'Ghana', ch: 'SVT', ko: true },
-    { time: '19:00', title: 'Åttondelsfinal (match 90)', ch: 'TV4' },
+    { time: '19:00', title: 'Åttondelsfinal (match 90)', ch: 'TV4', stageStart: 'Åttondelsfinal' },
     { time: '23:00', title: 'Åttondelsfinal (match 89)', ch: 'SVT' },
   ] },
   { date: '2026-07-05', label: 'Sön 5 juli', tv4: 'Per', games: [
@@ -165,7 +165,7 @@ window.SCHEDULE = [
     { time: '22:00', title: 'Åttondelsfinal (match 96)', ch: 'SVT' },
   ] },
   { date: '2026-07-09', label: 'Tor 9 juli', tv4: 'Tomas', games: [
-    { time: '22:00', title: 'Kvartsfinal (match 97)', ch: 'TV4' },
+    { time: '22:00', title: 'Kvartsfinal (match 97)', ch: 'TV4', stageStart: 'Kvartsfinal' },
   ] },
   { date: '2026-07-10', label: 'Fre 10 juli', tv4: null, games: [
     { time: '21:00', title: 'Kvartsfinal (match 98)', ch: 'SVT' },
@@ -177,15 +177,15 @@ window.SCHEDULE = [
     { time: '03:00', title: 'Kvartsfinal (match 100)', ch: 'SVT' },
   ] },
   { date: '2026-07-14', label: 'Tis 14 juli', tv4: null, games: [
-    { time: '21:00', title: 'Semifinal (match 101)', ch: 'SVT' },
+    { time: '21:00', title: 'Semifinal (match 101)', ch: 'SVT', stageStart: 'Semifinal' },
   ] },
   { date: '2026-07-15', label: 'Ons 15 juli', tv4: 'Per', games: [
     { time: '21:00', title: 'Semifinal (match 102)', ch: 'TV4' },
   ] },
   { date: '2026-07-18', label: 'Lör 18 juli', tv4: null, games: [
-    { time: '23:00', title: 'Bronsmatch', ch: 'SVT' },
+    { time: '23:00', title: 'Bronsmatch', ch: 'SVT', stageStart: 'Bronsmatch' },
   ] },
   { date: '2026-07-19', label: 'Sön 19 juli', tv4: 'Tomas', games: [
-    { time: '21:00', title: 'Finalen', ch: 'TV4' },
+    { time: '21:00', title: 'Finalen', ch: 'TV4', stageStart: 'Final' },
   ] },
 ];

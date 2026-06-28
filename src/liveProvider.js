@@ -20,7 +20,8 @@ export function parseMockConfig(str) {
     const bar = e.indexOf('|');
     if (bar < 0) continue;
     const home = e.slice(0, bar).trim();
-    const m = e.slice(bar + 1).trim().match(/^(.+)\s+(\d+)-(\d+)\s+(\d+|FT)$/i);
+    // "Borta h-a MINUT [typ]" – valfri typ på slutet (t.ex. r32) för slutspel.
+    const m = e.slice(bar + 1).trim().match(/^(.+?)\s+(\d+)-(\d+)\s+(\d+|FT)(?:\s+(\w+))?$/i);
     if (!home || !m) continue;
     const minToken = m[4].toUpperCase();
     const live = /^\d+$/.test(minToken);
@@ -31,6 +32,7 @@ export function parseMockConfig(str) {
       awayGoals: Number(m[3]),
       status: live ? 'live' : 'finished',
       minute: live ? Number(minToken) : null,
+      type: m[5] ? m[5].toLowerCase() : 'group',
     });
   }
   return out;
@@ -54,6 +56,7 @@ export function normalizeWorldcupGames(games) {
       awayGoals: toInt(g.away_score),
       status: finished ? 'finished' : 'live',
       minute: finished ? null : toInt(g.time_elapsed),
+      type: g.type ?? 'group',
     });
   }
   return out;

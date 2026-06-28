@@ -1,7 +1,52 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeStandingsWithLive, captureSettled } from '../src/liveStandings.js';
+import { computeStandingsWithLive, captureSettled, captureSettledRounds } from '../src/liveStandings.js';
 import { emptyRounds } from '../src/sheetParse.js';
+
+// --- Slutspel: avslutade matcher väver vinnaren in i rondlistorna ------------
+
+const koLive = (over) => ({
+  home: 'Sverige', away: 'Frankrike', homeGoals: 2, awayGoals: 1,
+  status: 'finished', type: 'r32', ...over,
+});
+const koRun = (predRounds, live) => computeStandingsWithLive({
+  participants: ['Anna'],
+  predictionsByName: new Map([['Anna', { matches: [], rounds: { ...emptyRounds(), ...predRounds } }]]),
+  facit: { matches: [], rounds: emptyRounds() },
+  live,
+});
+
+test('avslutad slutspelsmatch ger +5 till den som tippade vinnaren i nästa rond', () => {
+  const { standings } = koRun({ r16: ['Sverige'] }, [koLive()]);
+  assert.equal(standings.participants[0].total, 5);
+});
+
+test('final-vinst ger +10 till den som tippade VM-vinnaren', () => {
+  const { standings } = koRun({ winner: 'Sverige' }, [koLive({ type: 'final' })]);
+  assert.equal(standings.participants[0].total, 10);
+});
+
+test('pågående slutspelsmatch ger inga poäng (bara avslutade räknas)', () => {
+  const { standings } = koRun({ r16: ['Sverige'] }, [koLive({ status: 'live' })]);
+  assert.equal(standings.participants[0].total, 0);
+  assert.equal(standings.participants[0].liveDelta ?? 0, 0);
+});
+
+test('oavgjord (straffar) slutspelsmatch ger inga poäng från feed', () => {
+  const { standings } = koRun({ r16: ['Sverige'] }, [koLive({ homeGoals: 1, awayGoals: 1 })]);
+  assert.equal(standings.participants[0].total, 0);
+});
+
+test('captureSettledRounds behåller bara avslutade slutspelsmatcher', () => {
+  const sr = new Map();
+  captureSettledRounds(sr, [
+    koLive(), // avslutad r32 → behålls
+    koLive({ status: 'live' }), // pågående → nej
+    { home: 'Belgien', away: 'Iran', homeGoals: 2, awayGoals: 1, status: 'finished', type: 'group' }, // grupp → nej
+  ]);
+  assert.equal(sr.size, 1);
+  assert.equal([...sr.values()][0].type, 'r32');
+});
 
 test('captureSettled behåller avslutade matcher, inte pågående', () => {
   const settled = new Map();
@@ -11,7 +56,7 @@ test('captureSettled behåller avslutade matcher, inte pågående', () => {
   ]);
   assert.equal(settled.size, 1);
   assert.deepEqual(settled.get('belgien|iran'), {
-    home: 'Belgien', away: 'Iran', homeGoals: 2, awayGoals: 1, status: 'finished',
+    home: 'Belgien', away: 'Iran', homeGoals: 2, awayGoals: 1, status: 'finished', type: 'group',
   });
 });
 

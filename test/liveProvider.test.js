@@ -7,8 +7,16 @@ import { parseMockConfig, normalizeWorldcupGames } from '../src/liveProvider.js'
 test('parseMockConfig: en pågående match med minut', () => {
   const snap = parseMockConfig('Belgien|Iran 2-1 67');
   assert.deepEqual(snap, [
-    { home: 'Belgien', away: 'Iran', homeGoals: 2, awayGoals: 1, status: 'live', minute: 67 },
+    { home: 'Belgien', away: 'Iran', homeGoals: 2, awayGoals: 1, status: 'live', minute: 67, type: 'group' },
   ]);
+});
+
+test('parseMockConfig: valfri typ på slutet (slutspelsmatch)', () => {
+  const snap = parseMockConfig('Sverige|Frankrike 2-1 FT r32');
+  assert.equal(snap[0].type, 'r32');
+  assert.equal(snap[0].status, 'finished');
+  assert.equal(snap[0].home, 'Sverige');
+  assert.equal(snap[0].away, 'Frankrike');
 });
 
 test('parseMockConfig: lagnamn med blanksteg', () => {
@@ -46,8 +54,14 @@ const game = (over) => ({
 test('normalizeWorldcupGames: pågående match → svenska namn + minut', () => {
   const snap = normalizeWorldcupGames([game()]);
   assert.deepEqual(snap, [
-    { home: 'Belgien', away: 'Iran', homeGoals: 2, awayGoals: 1, status: 'live', minute: 67 },
+    { home: 'Belgien', away: 'Iran', homeGoals: 2, awayGoals: 1, status: 'live', minute: 67, type: 'group' },
   ]);
+});
+
+test('normalizeWorldcupGames: bär med matchens typ (slutspel)', () => {
+  const snap = normalizeWorldcupGames([game({ type: 'r32', home_team_name_en: 'Sweden', away_team_name_en: 'France' })]);
+  assert.equal(snap[0].type, 'r32');
+  assert.equal(snap[0].home, 'Sverige');
 });
 
 test('normalizeWorldcupGames: ej startad match hoppas över', () => {

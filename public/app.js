@@ -733,7 +733,17 @@ function fillDayContent(block, day, fixtures, scoreByPair, past, current) {
 
   const list = document.createElement('ol');
   list.className = 'sd-games';
-  list.append(...fixtures.map((fx) => gameRow(fx, scoreByPair)));
+  for (const fx of fixtures) {
+    // Liten avdelare där en ny slutspelsrond börjar (16-delsfinal osv).
+    if (fx.stageStart) {
+      const sep = document.createElement('li');
+      sep.className = 'sg-stage';
+      sep.setAttribute('role', 'presentation');
+      sep.textContent = fx.stageStart;
+      list.append(sep);
+    }
+    list.append(gameRow(fx, scoreByPair));
+  }
 
   block.replaceChildren(head, list);
 }
