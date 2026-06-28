@@ -20,10 +20,12 @@ function winnerOf(m) {
   return null;
 }
 
-// Väver in avslutade slutspelsmatchers vinnare i rondlistorna (facit.rounds).
-// Endast avslutade matcher med en avgjord vinnare. Arket vinner per match: om
-// arket redan har något av lagen i målronden har arket avgjort matchen och
-// feeden ignoreras. Returnerar ett nytt rounds-objekt, muterar inte.
+// Väver in den ledande/vinnande sidan av slutspelsmatcher i rondlistorna
+// (facit.rounds). STATUS-AGNOSTISK: anroparen bestämmer vilka matcher som
+// skickas in – avslutade (settle, definitiv vinnare) eller pågående (överlägg,
+// provisorisk ledare). Oavgjort → ingen ledare → inget läggs till. Arket vinner
+// per match: har arket redan något av lagen i målronden ignoreras feeden.
+// Returnerar ett nytt rounds-objekt, muterar inte.
 export function applyLiveKnockout(rounds, knockout) {
   const out = {
     ...rounds,
@@ -33,7 +35,6 @@ export function applyLiveKnockout(rounds, knockout) {
     final: [...(rounds.final ?? [])],
   };
   for (const m of knockout ?? []) {
-    if (m.status !== 'finished') continue;
     const next = KO_NEXT_ROUND[m.type];
     if (!next) continue; // bronsmatch / okänd rond
     const winner = winnerOf(m);

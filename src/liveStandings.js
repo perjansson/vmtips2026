@@ -57,6 +57,7 @@ export function computeStandingsWithLive({ participants, predictionsByName, faci
   const groupFinished = finished.filter((m) => !isKnockoutType(m.type));
   const koFinished = finished.filter((m) => isKnockoutType(m.type));
   const groupInPlay = inPlay.filter((m) => !isKnockoutType(m.type));
+  const koInPlay = inPlay.filter((m) => isKnockoutType(m.type));
 
   // Effektivt facit: avslutade gruppmatcher fylls i .matches, avslutade
   // slutspelsmatcher väver in vinnaren i nästa rond i .rounds. Arket vinner.
@@ -67,11 +68,16 @@ export function computeStandingsWithLive({ participants, predictionsByName, faci
   };
   const standings = computeStandings({ participants, predictionsByName, facit: effectiveFacit });
 
-  // Live-överlägg: bara pågående GRUPPmatcher ger pulsande delta. live.matches
-  // (schemats brickor) visar ALLA pågående matcher som scoreline, även slutspel.
+  // Live-överlägg (pulsande delta): pågående gruppmatcher (mål i .matches) OCH
+  // pågående slutspelsmatchers ledare (provisoriskt vidare i .rounds). live.
+  // matches visar ALLA pågående matcher som scoreline, även slutspel.
   let prov = standings;
-  if (groupInPlay.length) {
-    const liveFacit = { ...effectiveFacit, matches: mergeLiveIntoFacit(effectiveFacit, groupInPlay).matches };
+  if (groupInPlay.length || koInPlay.length) {
+    const liveFacit = {
+      ...effectiveFacit,
+      matches: groupInPlay.length ? mergeLiveIntoFacit(effectiveFacit, groupInPlay).matches : effectiveFacit.matches,
+      rounds: koInPlay.length ? applyLiveKnockout(effectiveFacit.rounds, koInPlay) : effectiveFacit.rounds,
+    };
     prov = computeStandings({ participants, predictionsByName, facit: liveFacit });
   }
   const liveView = buildLiveView(standings.participants, prov.participants, inPlay);

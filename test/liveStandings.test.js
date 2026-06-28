@@ -26,9 +26,14 @@ test('final-vinst ger +10 till den som tippade VM-vinnaren', () => {
   assert.equal(standings.participants[0].total, 10);
 });
 
-test('pågående slutspelsmatch ger inga poäng (bara avslutade räknas)', () => {
+test('pågående slutspelsmatch: ledarens tippare får live-delta (+5), inte bastotal', () => {
   const { standings } = koRun({ r16: ['Sverige'] }, [koLive({ status: 'live' })]);
-  assert.equal(standings.participants[0].total, 0);
+  assert.equal(standings.participants[0].total, 0, 'inte i bastotalen (ej avslutad)');
+  assert.equal(standings.participants[0].liveDelta, 5, 'provisorisk +5 i live-delta');
+});
+
+test('oavgjord pågående slutspelsmatch: ingen ledare → ingen live-delta', () => {
+  const { standings } = koRun({ r16: ['Sverige'] }, [koLive({ status: 'live', homeGoals: 1, awayGoals: 1 })]);
   assert.equal(standings.participants[0].liveDelta ?? 0, 0);
 });
 

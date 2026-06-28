@@ -39,8 +39,10 @@ test('bronsmatch (third) ger inga poäng', () => {
   assert.equal(r.winner, null);
 });
 
-test('bara avslutade matcher räknas (pågående hoppas över)', () => {
-  assert.deepEqual(applyLiveKnockout(emptyRounds(), [m({ status: 'live' })]).r16, []);
+test('status-agnostisk: ledaren läggs in oavsett status (anroparen väljer matcher)', () => {
+  // Settle (avslutade) vs överlägg (pågående) avgörs av anroparen; funktionen
+  // lägger in den ledande/vinnande sidan av de matcher den får.
+  assert.deepEqual(applyLiveKnockout(emptyRounds(), [m({ status: 'live' })]).r16, ['Sverige']);
 });
 
 test('arket vinner per match: om arket redan har något av lagen i r16, läggs inget till', () => {
