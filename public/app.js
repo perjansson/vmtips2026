@@ -354,6 +354,7 @@ let lastResultByPair = new Map();
 let liveByPair = new Map();
 // Avslutade slutspelsmatchers slutresultat (pair → "h–a"), enbart för visning.
 let koResultByPair = new Map();
+let koAdvancerByPair = new Map();
 
 // Tipsregler: 3 p rätt utgång + 1 p per prickat målantal (max 5).
 function tipPoints(t, result) {
@@ -593,6 +594,22 @@ function renderKnockoutGameInto(inner, fx) {
     const others = names.filter((n) => !predicted(n, leader));
     inner.append(kogGroup(`Får ${pts}p nu`, getters, 'hit'));
     inner.append(kogGroup('0p nu', others, 'miss'));
+    return;
+  }
+
+  // Avgjord (lag vidare känt – från feed innan arket hunnit med, eller från
+  // arket): visa poängen precis som under live, fast i dåtid.
+  const advancer = koAdvancerByPair.get(fx.pair);
+  if (advancer) {
+    const score = koResultByPair.get(fx.pair);
+    const head = document.createElement('p');
+    head.className = 'kog-head';
+    head.textContent = `${advancer} gick vidare${score ? ` ${score}` : ''} → ${pts}p till de som tippat ${advancer} ${verb}:`;
+    inner.append(head);
+    const getters = names.filter((n) => predicted(n, advancer));
+    const others = names.filter((n) => !predicted(n, advancer));
+    inner.append(kogGroup(`Fick ${pts}p`, getters, 'hit'));
+    inner.append(kogGroup('0p', others, 'miss'));
     return;
   }
 
@@ -1091,14 +1108,14 @@ function renderMatchSection(li, selector, matches, played) {
 // (prefetchat efter första målning); annars förblir sektionen dold.
 // Kommande (ej avgjorda) slutspelsmatcher med kända lag, kronologiskt. Beror
 // inte på deltagare → räknas ut en gång per render (upcomingKoGames).
-function computeUpcomingKo(facitRounds) {
+function computeUpcomingKo(facit) {
   const out = [];
   for (const fx of KO_FIXTURES) {
     const next = KO_NEXT_ROUND[fx.ko];
     if (!next) continue;
     const decided = next === 'winner'
-      ? new Set([facitRounds?.winner].filter(Boolean).map(teamKey))
-      : new Set((facitRounds?.[next] ?? []).map(teamKey));
+      ? new Set([facit?.winner].filter(Boolean).map(teamKey))
+      : new Set((facit?.rounds?.[next] ?? []).map(teamKey));
     if (!decided.has(teamKey(fx.home)) && !decided.has(teamKey(fx.away))) {
       out.push(fx);
       if (out.length >= 8) break; // de närmaste 8 räcker; håller korten korta
@@ -1108,14 +1125,14 @@ function computeUpcomingKo(facitRounds) {
 }
 
 // Nyligen avgjorda slutspelsmatcher (senaste först), med vinnaren (advancer).
-function computeRecentKo(facitRounds) {
+function computeRecentKo(facit) {
   const out = [];
   for (const fx of [...KO_FIXTURES].reverse()) {
     const next = KO_NEXT_ROUND[fx.ko];
     if (!next) continue;
     const decided = next === 'winner'
-      ? new Set([facitRounds?.winner].filter(Boolean).map(teamKey))
-      : new Set((facitRounds?.[next] ?? []).map(teamKey));
+      ? new Set([facit?.winner].filter(Boolean).map(teamKey))
+      : new Set((facit?.rounds?.[next] ?? []).map(teamKey));
     const homeAdv = decided.has(teamKey(fx.home));
     const awayAdv = decided.has(teamKey(fx.away));
     if (!homeAdv && !awayAdv) continue; // ej avgjord
@@ -1392,8 +1409,8 @@ function flipReorder(orderedRows) {
 function render(data) {
   if (checkBuildChange(data)) return; // ny deploy upptäckt – reload pågår
   // En gång per render (delas av alla kort): kommande/senaste slutspelsmatcher.
-  upcomingKoGames = computeUpcomingKo(data.facit.rounds);
-  recentKoGames = computeRecentKo(data.facit.rounds);
+  upcomingKoGames = computeUpcomingKo(data.facit);
+  recentKoGames = computeRecentKo(data.facit);
   const ordered = data.participants.map((p) => {
     let li = rowsByName.get(p.name);
     if (!li) {
@@ -1421,6 +1438,16 @@ function render(data) {
   ]));
   liveByPair = new Map((data.live?.matches ?? []).map((m) => [m.pair, m]));
   koResultByPair = new Map((data.koResults ?? []).map((m) => [m.pair, `${m.homeGoals}–${m.awayGoals}`]));
+  koAdvancerByPair = new Map();
+  for (const fx of KO_FIXTURES) {
+    const next = KO_NEXT_ROUND[fx.ko];
+    if (!next || !fx.pair) continue;
+    const decided = next === 'winner'
+      ? new Set([data.facit.winner].filter(Boolean).map(teamKey))
+      : new Set((data.facit.rounds?.[next] ?? []).map(teamKey));
+    if (decided.has(teamKey(fx.home))) koAdvancerByPair.set(fx.pair, fx.home);
+    else if (decided.has(teamKey(fx.away))) koAdvancerByPair.set(fx.pair, fx.away);
+  }
   renderSchedule(scoreByPair);
   // Klienttid — synkar visning med faktisk poll-cykel även när servern inte
   // har räknat om sin payload mellan två polls.
