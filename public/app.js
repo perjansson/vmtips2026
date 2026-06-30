@@ -355,6 +355,7 @@ let liveByPair = new Map();
 // Avslutade slutspelsmatchers slutresultat (pair → "h–a"), enbart för visning.
 let koResultByPair = new Map();
 let koAdvancerByPair = new Map();
+let koTiePairs = new Set(); // avslutade slutspelsmatcher som feeden har oavgjort
 
 // Tipsregler: 3 p rätt utgång + 1 p per prickat målantal (max 5).
 function tipPoints(t, result) {
@@ -602,9 +603,15 @@ function renderKnockoutGameInto(inner, fx) {
   const advancer = koAdvancerByPair.get(fx.pair);
   if (advancer) {
     const score = koResultByPair.get(fx.pair);
+    // Oavgjort i ordinarie tid men arket har en vinnare → avgjordes på
+    // förlängning/straffar (feeden kan inte säga vilket). Visa det i stället
+    // för den missvisande oavgjorda siffran.
+    const detail = koTiePairs.has(fx.pair)
+      ? ' efter förlängning/straffar'
+      : (score ? ` ${score}` : '');
     const head = document.createElement('p');
     head.className = 'kog-head';
-    head.textContent = `${advancer} gick vidare${score ? ` ${score}` : ''} → ${pts}p till de som tippat ${advancer} ${verb}:`;
+    head.textContent = `${advancer} gick vidare${detail} → ${pts}p till de som tippat ${advancer} ${verb}:`;
     inner.append(head);
     const getters = names.filter((n) => predicted(n, advancer));
     const others = names.filter((n) => !predicted(n, advancer));
@@ -693,16 +700,21 @@ function gameRow(fx, scoreByPair) {
   meta.className = 'sg-meta';
   const score = fx.pair ? scoreByPair.get(fx.pair) : undefined;
   const live = (!score && fx.pair) ? liveByPair.get(fx.pair) : undefined;
+  const isLiveNow = !!live && live.status === 'live';
+  // Arket har avgjort matchen men feeden ligger kvar på 'live' (status
+  // 'decided'): frys senaste ställning utan puls, tills feeden bekräftar FT.
+  const frozen = (live && live.status === 'decided' && live.homeGoals != null && live.awayGoals != null)
+    ? `${live.homeGoals}–${live.awayGoals}` : undefined;
   // Avslutad slutspelsmatch: slutresultatet från feeden visas (arket saknar
   // det). Endast visning – poängen kommer från avancemanget.
   const koResult = (!score && !live && isKnockout) ? koResultByPair.get(fx.pair) : undefined;
-  if (live && live.status === 'live') li.classList.add('sg-live');
-  if (score || koResult) {
+  if (isLiveNow) li.classList.add('sg-live');
+  if (score || koResult || frozen) {
     const sc = document.createElement('span');
     sc.className = 'sg-score';
-    sc.textContent = score ?? koResult;
+    sc.textContent = score ?? koResult ?? frozen;
     meta.append(sc);
-  } else if (live && live.homeGoals != null && live.awayGoals != null) {
+  } else if (isLiveNow && live.homeGoals != null && live.awayGoals != null) {
     const sc = document.createElement('span');
     sc.className = 'sg-score sg-score-live';
     sc.textContent = `${live.homeGoals}–${live.awayGoals}`;
@@ -1438,6 +1450,7 @@ function render(data) {
   ]));
   liveByPair = new Map((data.live?.matches ?? []).map((m) => [m.pair, m]));
   koResultByPair = new Map((data.koResults ?? []).map((m) => [m.pair, `${m.homeGoals}–${m.awayGoals}`]));
+  koTiePairs = new Set((data.koResults ?? []).filter((m) => m.homeGoals === m.awayGoals).map((m) => m.pair));
   koAdvancerByPair = new Map();
   for (const fx of KO_FIXTURES) {
     const next = KO_NEXT_ROUND[fx.ko];
