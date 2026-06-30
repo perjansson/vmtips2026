@@ -51,20 +51,25 @@ const koRunFacit = (facitRounds, live) => computeStandingsWithLive({
   live,
 });
 
-test('pågående slutspelsmatch som arket redan avgjort visas inte som live', () => {
+test('pågående slutspelsmatch som arket avgjort fryses (status decided, ingen puls)', () => {
   const { liveView, standings } = koRunFacit({ r16: ['Sverige'] }, [koLive({ status: 'live' })]);
-  assert.equal(liveView.matches.length, 0, 'arket har Sverige i r16 → ingen live-puls kvar');
-  assert.equal(standings.participants[0].liveDelta ?? 0, 0, 'ingen provisorisk delta heller');
+  assert.equal(liveView.matches.length, 1, 'matchen finns kvar – fryst ställning visas');
+  assert.equal(liveView.matches[0].status, 'decided', 'men inte live → ingen puls');
+  assert.equal(liveView.matches[0].homeGoals, 2, 'senaste ställning behålls');
+  assert.equal(liveView.matches[0].awayGoals, 1);
+  assert.equal(standings.participants[0].liveDelta ?? 0, 0, 'ingen provisorisk delta');
 });
 
 test('pågående slutspelsmatch som arket inte avgjort pulsar fortfarande som live', () => {
   const { liveView } = koRunFacit({}, [koLive({ status: 'live' })]);
   assert.equal(liveView.matches.length, 1, 'oavgjord rond → matchen visas som vanligt');
+  assert.equal(liveView.matches[0].status, 'live', 'fortsatt live → pulsar');
 });
 
-test('avgjord final döljer live-pulsen när arket har VM-vinnaren', () => {
+test('avgjord final fryses (status decided) när arket har VM-vinnaren', () => {
   const { liveView } = koRunFacit({ winner: 'Sverige' }, [koLive({ status: 'live', type: 'final' })]);
-  assert.equal(liveView.matches.length, 0);
+  assert.equal(liveView.matches.length, 1);
+  assert.equal(liveView.matches[0].status, 'decided');
 });
 
 test('captureSettledRounds behåller bara avslutade slutspelsmatcher', () => {

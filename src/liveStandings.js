@@ -81,8 +81,10 @@ export function computeStandingsWithLive({ participants, predictionsByName, faci
     prov = computeStandings({ participants, predictionsByName, facit: liveFacit });
   }
   // En slutspelsmatch som arket redan avgjort (något av lagen finns i målronden)
-  // ska sluta pulsa som live direkt – feeden kan ligga efter och rapportera
-  // 'live' långt efter att vi vet vem som gått vidare. Gruppmatcher rörs inte.
+  // ska sluta pulsa som live – feeden kan ligga efter och rapportera 'live'
+  // långt efter att vi vet vem som gått vidare. Vi behåller matchen men byter
+  // status till 'decided' så klienten fryser senaste ställning utan puls.
+  // Gruppmatcher rörs inte.
   const koSettled = (m) => {
     if (!isKnockoutType(m.type)) return false;
     const next = KO_NEXT_ROUND[m.type];
@@ -93,8 +95,8 @@ export function computeStandingsWithLive({ participants, predictionsByName, faci
     const keys = new Set(roster.map(teamKey));
     return keys.has(teamKey(m.home)) || keys.has(teamKey(m.away));
   };
-  const visibleInPlay = inPlay.filter((m) => !koSettled(m));
-  const liveView = buildLiveView(standings.participants, prov.participants, visibleInPlay);
+  const viewInPlay = inPlay.map((m) => (koSettled(m) ? { ...m, status: 'decided' } : m));
+  const liveView = buildLiveView(standings.participants, prov.participants, viewInPlay);
 
   // Fäst live-delta och rangordna om på den live-inkluderade totalen, så att
   // ordning och placering speglar det som faktiskt visas (bastotal + live).
