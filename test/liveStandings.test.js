@@ -42,6 +42,31 @@ test('oavgjord (straffar) slutspelsmatch ger inga poäng från feed', () => {
   assert.equal(standings.participants[0].total, 0);
 });
 
+// När arket fått in vem som gått vidare ska matchen inte längre pulsa som live,
+// även om feeden ligger efter och fortfarande rapporterar status 'live'.
+const koRunFacit = (facitRounds, live) => computeStandingsWithLive({
+  participants: ['Anna'],
+  predictionsByName: new Map([['Anna', { matches: [], rounds: emptyRounds() }]]),
+  facit: { matches: [], rounds: { ...emptyRounds(), ...facitRounds } },
+  live,
+});
+
+test('pågående slutspelsmatch som arket redan avgjort visas inte som live', () => {
+  const { liveView, standings } = koRunFacit({ r16: ['Sverige'] }, [koLive({ status: 'live' })]);
+  assert.equal(liveView.matches.length, 0, 'arket har Sverige i r16 → ingen live-puls kvar');
+  assert.equal(standings.participants[0].liveDelta ?? 0, 0, 'ingen provisorisk delta heller');
+});
+
+test('pågående slutspelsmatch som arket inte avgjort pulsar fortfarande som live', () => {
+  const { liveView } = koRunFacit({}, [koLive({ status: 'live' })]);
+  assert.equal(liveView.matches.length, 1, 'oavgjord rond → matchen visas som vanligt');
+});
+
+test('avgjord final döljer live-pulsen när arket har VM-vinnaren', () => {
+  const { liveView } = koRunFacit({ winner: 'Sverige' }, [koLive({ status: 'live', type: 'final' })]);
+  assert.equal(liveView.matches.length, 0);
+});
+
 test('captureSettledRounds behåller bara avslutade slutspelsmatcher', () => {
   const sr = new Map();
   captureSettledRounds(sr, [

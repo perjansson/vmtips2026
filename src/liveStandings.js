@@ -1,8 +1,8 @@
 import { computeStandings } from './standings.js';
 import { mergeLiveIntoFacit } from './liveMerge.js';
 import { buildLiveView } from './liveView.js';
-import { isKnockoutType, applyLiveKnockout } from './liveKnockout.js';
-import { matchPairKey } from './parse.js';
+import { isKnockoutType, applyLiveKnockout, KO_NEXT_ROUND } from './liveKnockout.js';
+import { matchPairKey, teamKey } from './parse.js';
 
 // Plockar avslutade GRUPPmatcher ur ett live-snapshot in i en beständig karta
 // (pair → resultat). Behålls som "settled" även när live-fönstret stängt och vi
@@ -80,7 +80,21 @@ export function computeStandingsWithLive({ participants, predictionsByName, faci
     };
     prov = computeStandings({ participants, predictionsByName, facit: liveFacit });
   }
-  const liveView = buildLiveView(standings.participants, prov.participants, inPlay);
+  // En slutspelsmatch som arket redan avgjort (något av lagen finns i målronden)
+  // ska sluta pulsa som live direkt – feeden kan ligga efter och rapportera
+  // 'live' långt efter att vi vet vem som gått vidare. Gruppmatcher rörs inte.
+  const koSettled = (m) => {
+    if (!isKnockoutType(m.type)) return false;
+    const next = KO_NEXT_ROUND[m.type];
+    if (!next) return false;
+    const roster = next === 'winner'
+      ? [effectiveFacit.rounds?.winner].filter(Boolean)
+      : (effectiveFacit.rounds?.[next] ?? []);
+    const keys = new Set(roster.map(teamKey));
+    return keys.has(teamKey(m.home)) || keys.has(teamKey(m.away));
+  };
+  const visibleInPlay = inPlay.filter((m) => !koSettled(m));
+  const liveView = buildLiveView(standings.participants, prov.participants, visibleInPlay);
 
   // Fäst live-delta och rangordna om på den live-inkluderade totalen, så att
   // ordning och placering speglar det som faktiskt visas (bastotal + live).
