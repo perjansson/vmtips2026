@@ -7,7 +7,7 @@ import { fetchTab, fetchParticipants } from './src/sheetClient.js';
 import { createSheetResultProvider } from './src/resultProvider.js';
 import { createLiveProvider } from './src/liveProvider.js';
 import { computeStandingsWithLive, captureSettled, captureSettledRounds } from './src/liveStandings.js';
-import { isInLiveWindow } from './src/liveWindow.js';
+import { isInLiveWindow, shouldPollLive } from './src/liveWindow.js';
 import { computeStandings } from './src/standings.js';
 import { matchPairKey, teamKey } from './src/parse.js';
 
@@ -18,6 +18,9 @@ const config = {
   clientPollSeconds: Number(process.env.CLIENT_POLL_SECONDS) || 5,
   predictionsRefreshSeconds: Number(process.env.PREDICTIONS_REFRESH_SECONDS) || 300,
   liveRefreshSeconds: Number(process.env.LIVE_REFRESH_SECONDS) || 15,
+  // Utanför live-fönster pollar vi feeden i denna låga takt (catch-up) för att
+  // fånga slutresultat som landar efter fönstret eller efter en omstart.
+  liveCatchupSeconds: Number(process.env.LIVE_CATCHUP_SECONDS) || 600,
   liveEnabled: process.env.LIVE_ENABLED !== 'false',
 };
 
@@ -47,6 +50,7 @@ const state = {
   settled: new Map(), // pair → avslutat grupp-resultat, behålls tills arket har det
   settledRounds: new Map(), // pair → avslutad slutspelsmatch (vinnare → nästa rond)
   settledSeeded: false, // har vi pollat minst en gång (seedat settled)?
+  lastLivePollMs: 0, // när feeden senast pollades (styr catch-up utanför fönster)
   liveUpdatedAt: null,
   updatedAt: null,
 };
@@ -293,11 +297,17 @@ function anyMatchInWindow(now = Date.now()) {
 async function refreshLive() {
   if (!config.liveEnabled) return;
   try {
-    // Utanför live-fönster pollar vi inte (kvotvänligt) – MEN bara när vi redan
-    // seedat de avslutade resultaten minst en gång, så en omstart mitt i natten
-    // ändå hämtar gårdagens slutresultat. state.settled (avslutade) behålls
-    // alltid; bara pågående matcher (state.live) är transienta.
-    if (liveProvider.requiresWindow && state.settledSeeded && !anyMatchInWindow()) {
+    // I ett live-fönster pollar vi i full takt (LIVE_REFRESH_SECONDS). Utanför
+    // fönster pollar vi ändå i låg takt (catch-up) så slutresultat som landar
+    // efter fönstret eller efter en omstart fångas – utan att feeden pollas
+    // konstant. Vid uppstart (ej seedat) pollar vi alltid. state.settled
+    // (avslutade) behålls alltid; bara pågående matcher (state.live) är transient.
+    const now = Date.now();
+    const inWindow = !liveProvider.requiresWindow || anyMatchInWindow(now);
+    if (!shouldPollLive({
+      seeded: state.settledSeeded, inWindow, now,
+      lastPollMs: state.lastLivePollMs, catchupMs: config.liveCatchupSeconds * 1000,
+    })) {
       if (state.live.length > 0) { state.live = []; recompute(); }
       return;
     }
@@ -306,6 +316,7 @@ async function refreshLive() {
     captureSettledRounds(state.settledRounds, snap);
     state.live = (Array.isArray(snap) ? snap : []).filter((m) => m.status === 'live');
     state.settledSeeded = true;
+    state.lastLivePollMs = now;
     state.liveUpdatedAt = new Date();
     recompute();
   } catch (err) {
