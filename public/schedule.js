@@ -149,14 +149,14 @@ window.SCHEDULE = [
   { date: '2026-07-04', label: 'Lör 4 juli', tv4: 'Tomas', games: [
     { time: '00:00', home: 'Argentina', away: 'Kap Verde', ch: 'SVT', ko: 'r32' },
     { time: '03:30', home: 'Colombia', away: 'Ghana', ch: 'SVT', ko: 'r32' },
-    { time: '19:00', title: 'Åttondelsfinal (match 90)', ch: 'TV4', stageStart: 'Åttondelsfinal' },
-    { time: '23:00', title: 'Åttondelsfinal (match 89)', ch: 'SVT' },
+    { time: '19:00', home: 'Kanada', away: 'Marocko', ch: 'TV4', ko: 'r16', stageStart: 'Åttondelsfinal' },
+    { time: '23:00', home: 'Paraguay', away: 'Frankrike', ch: 'SVT', ko: 'r16' },
   ] },
   { date: '2026-07-05', label: 'Sön 5 juli', tv4: 'Per', games: [
-    { time: '22:00', title: 'Åttondelsfinal (match 91)', ch: 'TV4' },
+    { time: '22:00', home: 'Brasilien', away: 'Norge', ch: 'TV4', ko: 'r16' },
   ] },
   { date: '2026-07-06', label: 'Mån 6 juli', tv4: 'Per', games: [
-    { time: '02:00', title: 'Åttondelsfinal (match 92)', ch: 'SVT' },
+    { time: '02:00', home: 'Mexiko', away: 'England', ch: 'SVT', ko: 'r16' },
     { time: '21:00', title: 'Åttondelsfinal (match 93)', ch: 'TV4' },
   ] },
   { date: '2026-07-07', label: 'Tis 7 juli', tv4: 'Tomas', games: [
