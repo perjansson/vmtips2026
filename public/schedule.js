@@ -160,7 +160,7 @@ window.SCHEDULE = [
     { time: '21:00', title: 'Åttondelsfinal (match 93)', ch: 'TV4' },
   ] },
   { date: '2026-07-07', label: 'Tis 7 juli', tv4: 'Tomas', games: [
-    { time: '02:00', title: 'Åttondelsfinal (match 94)', ch: 'TV4' },
+    { time: '02:00', home: 'USA', away: 'Belgien', ch: 'TV4', ko: 'r16' },
     { time: '18:00', title: 'Åttondelsfinal (match 95)', ch: 'TV4' },
     { time: '22:00', title: 'Åttondelsfinal (match 96)', ch: 'SVT' },
   ] },
