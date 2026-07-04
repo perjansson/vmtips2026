@@ -157,12 +157,12 @@ window.SCHEDULE = [
   ] },
   { date: '2026-07-06', label: 'Mån 6 juli', tv4: 'Per', games: [
     { time: '02:00', home: 'Mexiko', away: 'England', ch: 'SVT', ko: 'r16' },
-    { time: '21:00', title: 'Åttondelsfinal (match 93)', ch: 'TV4' },
+    { time: '21:00', home: 'Portugal', away: 'Spanien', ch: 'TV4', ko: 'r16' },
   ] },
   { date: '2026-07-07', label: 'Tis 7 juli', tv4: 'Tomas', games: [
     { time: '02:00', home: 'USA', away: 'Belgien', ch: 'TV4', ko: 'r16' },
-    { time: '18:00', title: 'Åttondelsfinal (match 95)', ch: 'TV4' },
-    { time: '22:00', title: 'Åttondelsfinal (match 96)', ch: 'SVT' },
+    { time: '18:00', home: 'Argentina', away: 'Egypten', ch: 'TV4', ko: 'r16' },
+    { time: '22:00', home: 'Schweiz', away: 'Colombia', ch: 'SVT', ko: 'r16' },
   ] },
   { date: '2026-07-09', label: 'Tor 9 juli', tv4: 'Tomas', games: [
     { time: '22:00', title: 'Kvartsfinal (match 97)', ch: 'TV4', stageStart: 'Kvartsfinal' },
