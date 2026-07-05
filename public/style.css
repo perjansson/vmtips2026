@@ -282,7 +282,11 @@ body {
 .kop-team-detail-list li:first-child::before { content: ''; margin: 0; }
 
 .kop-standings-toggle {
-  margin-top: 0.4rem;
+  /* Mobil: centrerad under lagen (desktop vänsterställer i media-frågan). */
+  display: block;
+  width: -webkit-fit-content;
+  width: fit-content;
+  margin: 0.4rem auto 0;
   background: rgba(0, 0, 0, 0.18);
   border: 0;
   color: inherit;
@@ -331,6 +335,7 @@ body {
   }
   .ko-round-label { text-align: left; }
   .ko-round-teams { justify-content: flex-start; }
+  .kop-standings-toggle { margin-left: 0; margin-right: 0; }
 }
 
 /* In-/ut-animeringar: enskilda dagblock (Visa fler/färre, dygnsskifte)
