@@ -281,6 +281,44 @@ body {
 }
 .kop-team-detail-list li:first-child::before { content: ''; margin: 0; }
 
+.kop-standings-toggle {
+  margin-top: 0.4rem;
+  background: rgba(0, 0, 0, 0.18);
+  border: 0;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+  padding: 0.26rem 0.7rem;
+  border-radius: 999px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.kop-standings-toggle::after { content: ' ▾'; opacity: 0.8; }
+.kop-standings-toggle[aria-expanded="true"]::after { content: ' ▴'; }
+.kop-standings-toggle:hover { background: rgba(255, 255, 255, 0.22); }
+.kop-standings-toggle:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.kop-standings {
+  margin: 0.4rem 0 0.1rem;
+  min-width: 13rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 0.5rem;
+  background: rgba(0, 0, 0, 0.22);
+}
+.kop-standings[hidden] { display: none; }
+.kop-standings-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.76rem;
+  font-variant-numeric: tabular-nums;
+}
+.kop-standings-table td { padding: 0.11rem 0.3rem; vertical-align: baseline; }
+.kop-standings-rank { width: 1.4rem; text-align: right; opacity: 0.6; }
+.kop-standings-name { width: 100%; }
+.kop-standings-correct { white-space: nowrap; text-align: right; opacity: 0.8; }
+.kop-standings-pts { white-space: nowrap; text-align: right; font-weight: 700; }
+
 @media (min-width: 600px) {
   .ko-panel-toggle { display: none; }
   .ko-panel.collapsed .ko-panel-rounds { display: flex; }

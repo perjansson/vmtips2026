@@ -155,6 +155,14 @@ const KO_PANEL_ROUNDS = [
 // Bara en åt gången – en delad ruta per rond visar listan.
 let openKoTeam = null; // { roundKey, teamKey } | null
 
+// Ronder vars poängställning (per-rond topplista) är utfälld. Flera får vara
+// öppna samtidigt och överlever ompålning (panelen byggs bara om vid
+// signaturändring).
+const openKoStandings = new Set(); // roundKey[]
+
+// Poäng per rätt lag i en slutspelsrond (speglar POINTS.roundTeam i src/scoring.js).
+const KO_TEAM_POINTS = 5;
+
 // För en given rond: Map<teamKey, string[] namn> som hade laget i sin gissning.
 // Räknas ut en gång per signatur-ändring (billigt: ~25 namn × 5 ronder).
 function koGuessersByRound() {
@@ -225,6 +233,24 @@ function koRoundGroup(roundKey, label, teams, guessersByTeam, total) {
     list.append(chip);
   }
   group.append(h, list, detail);
+  // Poängställning per rond: bara när tipsen är laddade (annars finns inga
+  // gissningar att räkna). Utfällbar knapp; tabellen minns sitt öppna läge.
+  if (guessersByTeam) {
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'kop-standings-toggle';
+    toggle.setAttribute('aria-expanded', String(openKoStandings.has(roundKey)));
+    toggle.textContent = 'Poängställning';
+    const table = koStandingsTable(roundKey, teams);
+    toggle.addEventListener('click', () => {
+      const open = !openKoStandings.has(roundKey);
+      if (open) openKoStandings.add(roundKey);
+      else openKoStandings.delete(roundKey);
+      toggle.setAttribute('aria-expanded', String(open));
+      table.hidden = !open;
+    });
+    group.append(toggle, table);
+  }
   if (openKoTeam && openKoTeam.roundKey === roundKey) {
     const found = teams.find((t) => teamKey(t) === openKoTeam.teamKey);
     if (found && guessersByTeam) {
@@ -294,6 +320,56 @@ function toggleKoTeam(roundKey, tk, teamName, guessersByTeam, group) {
   openKoTeam = { roundKey, teamKey: tk };
   const total = Object.keys(knockoutByName ?? {}).length;
   paintKoTeamDetail(group, teamName, tk, guessersByTeam, total);
+}
+
+// Per-rond topplista: för varje deltagare, hur många av rondens lag hen prickade
+// och poängen det gav (5 p/lag). Sorterad på poäng (fallande), sedan namn.
+// Delad placering vid lika poäng, precis som huvudlistan.
+function koRoundStandings(roundKey, facitTeams) {
+  const facitSet = new Set(facitTeams.map(teamKey));
+  const rows = Object.entries(knockoutByName ?? {}).map(([name, guesses]) => {
+    const correct = (guesses?.[roundKey] ?? [])
+      .filter((t) => facitSet.has(teamKey(t))).length;
+    return { name, correct, points: correct * KO_TEAM_POINTS };
+  });
+  rows.sort((a, b) => (b.points - a.points) || a.name.localeCompare(b.name, 'sv'));
+  let prevPoints = null;
+  let prevRank = 0;
+  rows.forEach((r, i) => {
+    r.rank = r.points === prevPoints ? prevRank : i + 1;
+    prevPoints = r.points;
+    prevRank = r.rank;
+  });
+  return rows;
+}
+
+function koStandingsTable(roundKey, facitTeams) {
+  const wrap = document.createElement('div');
+  wrap.className = 'kop-standings';
+  wrap.hidden = !openKoStandings.has(roundKey);
+  const table = document.createElement('table');
+  table.className = 'kop-standings-table';
+  const tbody = document.createElement('tbody');
+  for (const r of koRoundStandings(roundKey, facitTeams)) {
+    const tr = document.createElement('tr');
+    const rank = document.createElement('td');
+    rank.className = 'kop-standings-rank';
+    rank.textContent = r.rank;
+    const name = document.createElement('td');
+    name.className = 'kop-standings-name';
+    name.textContent = r.name;
+    const correct = document.createElement('td');
+    correct.className = 'kop-standings-correct';
+    correct.textContent = `${r.correct}/${facitTeams.length} rätt`;
+    const pts = document.createElement('td');
+    pts.className = 'kop-standings-pts';
+    pts.textContent = `${r.points} p`;
+    tr.append(rank, name, correct, pts);
+    tbody.append(tr);
+  }
+  table.append(tbody);
+  wrap.append(table);
+  return wrap;
 }
 
 function renderKnockoutPanel(facit) {
