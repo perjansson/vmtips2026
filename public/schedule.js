@@ -165,13 +165,13 @@ window.SCHEDULE = [
     { time: '22:00', home: 'Schweiz', away: 'Colombia', ch: 'SVT', ko: 'r16' },
   ] },
   { date: '2026-07-09', label: 'Tor 9 juli', tv4: 'Tomas', games: [
-    { time: '22:00', title: 'Kvartsfinal (match 97)', ch: 'TV4', stageStart: 'Kvartsfinal' },
+    { time: '22:00', home: 'Marocko', away: 'Frankrike', ch: 'TV4', ko: 'qf', stageStart: 'Kvartsfinal' },
   ] },
   { date: '2026-07-10', label: 'Fre 10 juli', tv4: null, games: [
     { time: '21:00', title: 'Kvartsfinal (match 98)', ch: 'SVT' },
   ] },
   { date: '2026-07-11', label: 'Lör 11 juli', tv4: 'Per', games: [
-    { time: '23:00', title: 'Kvartsfinal (match 99)', ch: 'TV4' },
+    { time: '23:00', home: 'Norge', away: 'England', ch: 'TV4', ko: 'qf' },
   ] },
   { date: '2026-07-12', label: 'Sön 12 juli', tv4: null, games: [
     { time: '03:00', title: 'Kvartsfinal (match 100)', ch: 'SVT' },
