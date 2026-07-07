@@ -174,7 +174,7 @@ window.SCHEDULE = [
     { time: '23:00', home: 'Norge', away: 'England', ch: 'TV4', ko: 'qf' },
   ] },
   { date: '2026-07-12', label: 'Sön 12 juli', tv4: null, games: [
-    { time: '03:00', title: 'Kvartsfinal (match 100)', ch: 'SVT' },
+    { time: '03:00', home: 'Argentina', away: 'Schweiz', ch: 'SVT', ko: 'qf' },
   ] },
   { date: '2026-07-14', label: 'Tis 14 juli', tv4: null, games: [
     { time: '21:00', title: 'Semifinal (match 101)', ch: 'SVT', stageStart: 'Semifinal' },
