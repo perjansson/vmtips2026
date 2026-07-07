@@ -168,7 +168,7 @@ window.SCHEDULE = [
     { time: '22:00', home: 'Marocko', away: 'Frankrike', ch: 'TV4', ko: 'qf', stageStart: 'Kvartsfinal' },
   ] },
   { date: '2026-07-10', label: 'Fre 10 juli', tv4: null, games: [
-    { time: '21:00', title: 'Kvartsfinal (match 98)', ch: 'SVT' },
+    { time: '21:00', home: 'Spanien', away: 'Belgien', ch: 'SVT', ko: 'qf' },
   ] },
   { date: '2026-07-11', label: 'Lör 11 juli', tv4: 'Per', games: [
     { time: '23:00', home: 'Norge', away: 'England', ch: 'TV4', ko: 'qf' },
