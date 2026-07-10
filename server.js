@@ -204,10 +204,13 @@ function recompute() {
 
   const ROUND_SIZES = [['r16', 16], ['qf', 8], ['sf', 4], ['final', 2]];
   for (const [key, size] of ROUND_SIZES) {
-    if ((rounds[key] ?? []).length === size) {
-      knockoutPlayed += size;
-      pointsAtStake += size * 5;
-    }
+    const decided = Math.min((rounds[key] ?? []).length, size);
+    // Poäng låses upp per lag så snart laget är klart (t.ex. 2 av 4
+    // semifinalister = 10p), inte i klump när hela ronden är känd.
+    pointsAtStake += decided * 5;
+    // Matchräknaren flyttas däremot först när hela nästa rond-rostern är känd
+    // (full roster = alla matcher i föregående rond spelade).
+    if (decided === size) knockoutPlayed += size;
   }
   if (rounds.winner) {
     knockoutPlayed += 2; // final + bronsmatch
