@@ -1273,6 +1273,75 @@ main {
 .foot-status { font-variant-numeric: tabular-nums; }
 .foot-status + p:not(.foot-status) { margin-top: 0.6rem; }
 
+/* ---- Slutställningsprognos ("Klicka inte här") ---- */
+.forecast {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 0 1rem 2.5rem;
+  text-align: center;
+}
+.forecast-toggle {
+  background: none;
+  border: 0;
+  color: rgba(243, 251, 245, 0.5);
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  padding: 0.3rem 0.5rem;
+  -webkit-tap-highlight-color: transparent;
+}
+.forecast-toggle:hover { color: rgba(243, 251, 245, 0.85); }
+.forecast-toggle:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.forecast-toggle::after { content: ' \25be'; }
+.forecast-toggle[aria-expanded="true"]::after { content: ' \25b4'; }
+.forecast-body {
+  margin-top: 0.9rem;
+  padding: 0.9rem 0.85rem;
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: 0.7rem;
+  box-shadow: var(--shadow);
+  text-align: left;
+}
+.forecast-body[hidden] { display: none; }
+.forecast-intro { margin: 0 0 0.7rem; font-size: 0.8rem; color: var(--ink-soft); }
+.forecast-empty { margin: 0; font-size: 0.85rem; color: var(--ink-soft); }
+.forecast-note { margin: 0.6rem 0 0; font-size: 0.7rem; color: var(--ink-soft); }
+.forecast-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.forecast-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+.forecast-table th,
+.forecast-table td { padding: 0.22rem 0.32rem; text-align: center; white-space: nowrap; }
+.forecast-table thead th {
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+  border-bottom: 1px solid var(--line);
+}
+.forecast-table tbody tr + tr td { border-top: 1px solid var(--line); }
+.forecast-table .fc-name {
+  text-align: left;
+  position: sticky;
+  left: 0;
+  background: var(--surface);
+  z-index: 1;
+}
+.fc-name-name { font-weight: 600; }
+.fc-name-cur { margin-left: 0.35rem; font-size: 0.68rem; color: var(--ink-soft); }
+.forecast-table .fc-num { font-weight: 700; }
+.forecast-table .fc-pos { color: var(--ink-soft); }
+.forecast-table td.fc-has {
+  color: var(--ink);
+  background: rgba(31, 157, 85, calc(0.10 + 0.55 * var(--w)));
+}
+.forecast-table td.fc-modal { font-weight: 800; }
+
 @media (min-width: 600px) {
   .row-button { padding: 0.85rem 1.1rem; }
   .total-value { font-size: 2rem; }

@@ -71,6 +71,12 @@
     <p>VM&#8209;vinnare: 10 p.</p>
   </footer>
 
+  <section class="forecast" id="forecast" aria-label="Slutställningsprognos" hidden>
+    <button class="forecast-toggle" id="forecast-toggle" type="button"
+            aria-expanded="false" aria-controls="forecast-body">Klicka inte här</button>
+    <div class="forecast-body" id="forecast-body" hidden></div>
+  </section>
+
   <template id="row-template">
     <li class="row">
       <button class="row-button" type="button" aria-expanded="false">

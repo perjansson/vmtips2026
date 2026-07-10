@@ -17,6 +17,9 @@ const schedActionsTopEl = document.getElementById('sched-actions-top');
 const koPanelEl = document.getElementById('ko-panel');
 const koPanelToggleEl = document.getElementById('ko-panel-toggle');
 const koPanelRoundsEl = document.getElementById('ko-panel-rounds');
+const forecastEl = document.getElementById('forecast');
+const forecastToggleEl = document.getElementById('forecast-toggle');
+const forecastBodyEl = document.getElementById('forecast-body');
 
 // --- Matchschema i headern ---------------------------------------------
 // Det statiska schemat (window.SCHEDULE) ger ordning, tider, kanal och
@@ -48,6 +51,12 @@ const KO_FIXTURES = SCHED_DAYS
 // mellan alla deltagarkort, räknas ut en gång per render.
 let upcomingKoGames = [];
 let recentKoGames = [];
+
+// Kvartsfinalsmatcherna i matchordning (97-100) – roten till slutspelsträdet
+// som prognosen räknar på: SF101 = vinnare(97) v vinnare(98), SF102 =
+// vinnare(99) v vinnare(100), final = SF-vinnarna. Speglar den riktiga
+// lottningen (Frankrike och Spanien i samma semi).
+const QF_FIXTURES = KO_FIXTURES.filter((fx) => fx.ko === 'qf');
 
 const DAYS_PER_CLICK = 2;   // antal extra matchdagar per "Visa fler/tidigare"-klick
 let extraDays = 0;          // utökar fönstrets bakre kant framåt
@@ -1494,8 +1503,220 @@ function flipReorder(orderedRows) {
   }
 }
 
+// --- Slutställningsprognos ("Klicka inte här") --------------------------
+// För alla sätt de kvarvarande slutspelsmatcherna kan sluta (varje match
+// 50/50) räknas sannolikheten att varje deltagare hamnar på varje placering.
+// Redan avgjorda matcher låses via facit (facit.rounds.sf/final/winner); bara
+// oavgjorda noder räknas upp, så tabellen uppdateras av sig själv när ett lag
+// går vidare eller en vinnare koras.
+
+let forecastOpen = false;
+let forecastSig = null;
+let lastData = null;
+
+// Det lag i paret som redan gått vidare (finns i avancemangsmängden), annars null.
+function advancedFromPair(pair, advancedSet) {
+  if (advancedSet.has(teamKey(pair[0]))) return pair[0];
+  if (advancedSet.has(teamKey(pair[1]))) return pair[1];
+  return null;
+}
+
+// Alla möjliga slut på turneringen från kvartsfinal och framåt.
+function enumerateEndgame(facit) {
+  if (QF_FIXTURES.length !== 4) return null;
+  const rounds = facit.rounds ?? {};
+  const sfSet = new Set((rounds.sf ?? []).map(teamKey));
+  const finalSet = new Set((rounds.final ?? []).map(teamKey));
+  const champ = facit.winner ? teamKey(facit.winner) : null;
+  const qf = QF_FIXTURES.map((fx) => [fx.home, fx.away]);
+
+  // Vinnaralternativ för en match: låst om avgjord, annars båda lagen.
+  const winners = (pair, decidedSet) => {
+    const dec = advancedFromPair(pair, decidedSet);
+    return dec ? [dec] : pair.slice();
+  };
+  const finalWinners = (pair) => {
+    if (!champ) return pair.slice();
+    if (teamKey(pair[0]) === champ) return [pair[0]];
+    if (teamKey(pair[1]) === champ) return [pair[1]];
+    return []; // vinnare avgjord men inte i detta finalpar – inkonsistent gren
+  };
+
+  const scenarios = [];
+  for (const w0 of winners(qf[0], sfSet))
+    for (const w1 of winners(qf[1], sfSet))
+      for (const w2 of winners(qf[2], sfSet))
+        for (const w3 of winners(qf[3], sfSet)) {
+          const sfTeams = [w0, w1, w2, w3]; // de fyra semifinalisterna
+          for (const fa of winners([w0, w1], finalSet)) // SF101
+            for (const fb of winners([w2, w3], finalSet)) // SF102
+              for (const win of finalWinners([fa, fb]))
+                scenarios.push({ sfTeams, finalTeams: [fa, fb], winner: win });
+        }
+  return scenarios;
+}
+
+function computeForecast(data) {
+  if (!tipsLoaded || !knockoutByName) return { pending: true };
+  const scenarios = enumerateEndgame(data.facit);
+  if (!scenarios || scenarios.length === 0) return null;
+  const participants = data.participants ?? [];
+  if (participants.length === 0) return null;
+  const N = participants.length;
+
+  // Bas = nuvarande total minus poäng som fortfarande kan ändras (sf/final/vinnare).
+  const people = participants.map((p) => {
+    const kr = p.breakdown?.knockout?.rounds ?? {};
+    const g = knockoutByName[p.name] ?? {};
+    return {
+      name: p.name,
+      current: p.total ?? 0,
+      base: (p.total ?? 0) - (kr.sf?.points ?? 0) - (kr.final?.points ?? 0)
+        - (p.breakdown?.knockout?.winnerPoints ?? 0),
+      sfGuess: new Set((g.sf ?? []).map(teamKey)),
+      finalGuess: new Set((g.final ?? []).map(teamKey)),
+      winnerGuess: g.winner ? teamKey(g.winner) : (p.winnerPick ? teamKey(p.winnerPick) : null),
+      posCount: new Array(N + 1).fill(0),
+      max: -Infinity,
+      min: Infinity,
+    };
+  });
+
+  for (const sc of scenarios) {
+    const sfK = new Set(sc.sfTeams.map(teamKey));
+    const fK = new Set(sc.finalTeams.map(teamKey));
+    const wK = teamKey(sc.winner);
+    const totals = people.map((pp) => {
+      let pts = pp.base;
+      for (const t of pp.sfGuess) if (sfK.has(t)) pts += 5;
+      for (const t of pp.finalGuess) if (fK.has(t)) pts += 5;
+      if (pp.winnerGuess && pp.winnerGuess === wK) pts += 10;
+      if (pts > pp.max) pp.max = pts;
+      if (pts < pp.min) pp.min = pts;
+      return pts;
+    });
+    const order = totals.map((t, i) => ({ i, t }))
+      .sort((a, b) => (b.t - a.t) || people[a.i].name.localeCompare(people[b.i].name, 'sv'));
+    let prevT = null;
+    let prevRank = 0;
+    order.forEach((o, idx) => {
+      const rank = o.t === prevT ? prevRank : idx + 1;
+      prevT = o.t;
+      prevRank = rank;
+      people[o.i].posCount[rank] += 1;
+    });
+  }
+  const n = scenarios.length;
+  for (const p of people) p.prob = p.posCount.map((c) => c / n);
+  people.sort((a, b) => (b.current - a.current) || a.name.localeCompare(b.name, 'sv'));
+  return { people, scenarios: n, positions: N };
+}
+
+function renderForecast(data) {
+  const hasTree = QF_FIXTURES.length === 4;
+  forecastEl.hidden = !hasTree;
+  if (!hasTree || !forecastOpen) return;
+
+  const sig = JSON.stringify([
+    data.facit?.rounds?.sf, data.facit?.rounds?.final, data.facit?.winner, tipsLoaded,
+    (data.participants ?? []).map((p) => [p.name, p.total]),
+  ]);
+  if (sig === forecastSig && forecastBodyEl.childElementCount > 0) return;
+  forecastSig = sig;
+
+  const fc = computeForecast(data);
+  forecastBodyEl.replaceChildren();
+  if (!fc || fc.pending) {
+    const msg = document.createElement('p');
+    msg.className = 'forecast-empty';
+    msg.textContent = fc?.pending ? 'Hämtar tips…' : 'Prognosen aktiveras när kvartsfinalslagen är klara.';
+    forecastBodyEl.append(msg);
+    if (fc?.pending) ensureTips().then(() => { if (forecastOpen) renderForecast(data); });
+    return;
+  }
+
+  const intro = document.createElement('p');
+  intro.className = 'forecast-intro';
+  intro.textContent = fc.scenarios === 1
+    ? 'Alla slutspelsmatcher avgjorda – slutställningen är spikad.'
+    : `Sannolikhet för slutplacering över ${fc.scenarios} möjliga utfall av kvarvarande matcher (varje match 50/50). Procent per placering.`;
+  forecastBodyEl.append(intro);
+
+  const scroll = document.createElement('div');
+  scroll.className = 'forecast-scroll';
+  const table = document.createElement('table');
+  table.className = 'forecast-table';
+  const th = (txt, cls) => {
+    const el = document.createElement('th');
+    el.textContent = txt;
+    if (cls) el.className = cls;
+    return el;
+  };
+  const thead = document.createElement('thead');
+  const hrow = document.createElement('tr');
+  hrow.append(th('Deltagare', 'fc-name'), th('Max', 'fc-num'));
+  for (let r = 1; r <= fc.positions; r++) hrow.append(th(String(r), 'fc-pos'));
+  thead.append(hrow);
+  table.append(thead);
+
+  const tbody = document.createElement('tbody');
+  for (const p of fc.people) {
+    const tr = document.createElement('tr');
+    const nameTd = document.createElement('td');
+    nameTd.className = 'fc-name';
+    const nm = document.createElement('span');
+    nm.className = 'fc-name-name';
+    nm.textContent = p.name;
+    const cur = document.createElement('span');
+    cur.className = 'fc-name-cur';
+    cur.textContent = `${p.current} p`;
+    nameTd.append(nm, cur);
+    const maxTd = document.createElement('td');
+    maxTd.className = 'fc-num';
+    maxTd.textContent = p.max;
+    tr.append(nameTd, maxTd);
+
+    let modal = 1;
+    for (let r = 2; r <= fc.positions; r++) if (p.prob[r] > p.prob[modal]) modal = r;
+    for (let r = 1; r <= fc.positions; r++) {
+      const td = document.createElement('td');
+      td.className = 'fc-pos';
+      const v = p.prob[r] ?? 0;
+      if (v > 0) {
+        const pct = Math.round(v * 100);
+        td.textContent = pct === 0 ? '<1' : String(pct);
+        td.classList.add('fc-has');
+        td.style.setProperty('--w', v.toFixed(3));
+        if (r === modal) td.classList.add('fc-modal');
+      }
+      tr.append(td);
+    }
+    tbody.append(tr);
+  }
+  table.append(tbody);
+  scroll.append(table);
+  forecastBodyEl.append(scroll);
+
+  const note = document.createElement('p');
+  note.className = 'forecast-note';
+  note.textContent = 'Max = högsta möjliga slutpoäng. Kolumnerna 1–' + fc.positions
+    + ' är slutplacering. Bygger på allas slutspelstips och nuvarande ställning.';
+  forecastBodyEl.append(note);
+}
+
+forecastToggleEl.addEventListener('click', () => {
+  forecastOpen = !forecastOpen;
+  forecastToggleEl.setAttribute('aria-expanded', String(forecastOpen));
+  forecastBodyEl.hidden = !forecastOpen;
+  if (forecastOpen) {
+    forecastSig = null; // tvinga ombygge
+    if (lastData) renderForecast(lastData);
+  }
+});
+
 function render(data) {
   if (checkBuildChange(data)) return; // ny deploy upptäckt – reload pågår
+  lastData = data;
   // En gång per render (delas av alla kort): kommande/senaste slutspelsmatcher.
   upcomingKoGames = computeUpcomingKo(data.facit);
   recentKoGames = computeRecentKo(data.facit);
@@ -1515,6 +1736,7 @@ function render(data) {
 
   pointsProgressEl.textContent = `${data.facit.pointsAtStake} poäng av ${data.facit.pointsTotal} poäng totalt`;
   renderKnockoutPanel(data.facit);
+  renderForecast(data);
   const results = data.facit.results ?? [];
   const scoreByPair = new Map(results.map((m) => [
     `${teamKey(m.home)}|${teamKey(m.away)}`,
