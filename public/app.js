@@ -1506,13 +1506,16 @@ function flipReorder(orderedRows) {
 // --- Slutställningsprognos ("Klicka inte här") --------------------------
 // För alla sätt de kvarvarande slutspelsmatcherna kan sluta (varje match
 // 50/50) räknas sannolikheten att varje deltagare hamnar på varje placering.
-// Redan avgjorda matcher låses via facit (facit.rounds.sf/final/winner); bara
-// oavgjorda noder räknas upp, så tabellen uppdateras av sig själv när ett lag
-// går vidare eller en vinnare koras.
+// Redan avgjorda matcher låses via facit (facit.rounds.sf/final/winner) och
+// PÅGÅENDE matcher låses provisoriskt till den live-ledande sidan; bara
+// oavgjorda noder räknas upp. Tabellen uppdateras av sig själv när ett lag går
+// vidare, en live-ledning ändras eller en vinnare koras.
 
 let forecastOpen = false;
 let forecastSig = null;
 let lastData = null;
+
+const pairSortKey = (a, b) => [teamKey(a), teamKey(b)].sort().join('|');
 
 // Det lag i paret som redan gått vidare (finns i avancemangsmängden), annars null.
 function advancedFromPair(pair, advancedSet) {
@@ -1521,25 +1524,35 @@ function advancedFromPair(pair, advancedSet) {
   return null;
 }
 
-// Alla möjliga slut på turneringen från kvartsfinal och framåt.
-function enumerateEndgame(facit) {
+// Alla möjliga slut på turneringen från kvartsfinal och framåt. `lock` är en
+// karta parnyckel → provisorisk live-ledare som räknas in (facit vinner över live).
+function enumerateEndgame(facit, lock) {
   if (QF_FIXTURES.length !== 4) return null;
   const rounds = facit.rounds ?? {};
   const sfSet = new Set((rounds.sf ?? []).map(teamKey));
   const finalSet = new Set((rounds.final ?? []).map(teamKey));
   const champ = facit.winner ? teamKey(facit.winner) : null;
   const qf = QF_FIXTURES.map((fx) => [fx.home, fx.away]);
+  const liveLock = lock ?? new Map();
 
-  // Vinnaralternativ för en match: låst om avgjord, annars båda lagen.
+  // Vinnaralternativ för en match: bekräftat facit först, sedan pågående
+  // live-ledare (provisorisk), annars båda lagen (50/50).
   const winners = (pair, decidedSet) => {
     const dec = advancedFromPair(pair, decidedSet);
-    return dec ? [dec] : pair.slice();
+    if (dec) return [dec];
+    const lv = liveLock.get(pairSortKey(pair[0], pair[1]));
+    if (lv) return [lv];
+    return pair.slice();
   };
   const finalWinners = (pair) => {
-    if (!champ) return pair.slice();
-    if (teamKey(pair[0]) === champ) return [pair[0]];
-    if (teamKey(pair[1]) === champ) return [pair[1]];
-    return []; // vinnare avgjord men inte i detta finalpar – inkonsistent gren
+    if (champ) {
+      if (teamKey(pair[0]) === champ) return [pair[0]];
+      if (teamKey(pair[1]) === champ) return [pair[1]];
+      return []; // vinnare avgjord men inte i detta finalpar – inkonsistent gren
+    }
+    const lv = liveLock.get(pairSortKey(pair[0], pair[1]));
+    if (lv) return [lv];
+    return pair.slice();
   };
 
   const scenarios = [];
@@ -1556,9 +1569,42 @@ function enumerateEndgame(facit) {
   return scenarios;
 }
 
+// Pågående (live) slutspelsmatcher som rör prognosträdet: kvartsfinaler (matchas
+// mot schemat), semifinaler (två semifinalister möts) och final (två finalister
+// möts). Returnerar en lås-karta (parnyckel → provisorisk ledare) som räknas in
+// samt en lista för visning. Oavgjord live-match = ingen ledare (räknas 50/50).
+function scanLiveEndgame(data) {
+  const lock = new Map();
+  const games = [];
+  const live = (data.live?.matches ?? []).filter((m) =>
+    m.status === 'live' && m.homeGoals != null && m.awayGoals != null);
+  if (live.length === 0) return { lock, games };
+  const qfKeys = new Set(QF_FIXTURES.map((f) => pairSortKey(f.home, f.away)));
+  const sfK = new Set((data.facit?.rounds?.sf ?? []).map(teamKey));
+  const finK = new Set((data.facit?.rounds?.final ?? []).map(teamKey));
+  for (const m of live) {
+    const hk = teamKey(m.home);
+    const ak = teamKey(m.away);
+    const key = [hk, ak].sort().join('|');
+    const round = finK.has(hk) && finK.has(ak) ? 'final'
+      : sfK.has(hk) && sfK.has(ak) ? 'sf'
+        : qfKeys.has(key) ? 'qf' : null;
+    if (!round) continue; // live-match som inte rör slutspelsträdet (t.ex. grupp)
+    const leader = m.homeGoals === m.awayGoals ? null
+      : (m.homeGoals > m.awayGoals ? m.home : m.away);
+    if (leader) lock.set(key, leader);
+    games.push({
+      home: m.home, away: m.away, homeGoals: m.homeGoals, awayGoals: m.awayGoals,
+      minute: m.minute, leader, round,
+    });
+  }
+  return { lock, games };
+}
+
 function computeForecast(data) {
   if (!tipsLoaded || !knockoutByName) return { pending: true };
-  const scenarios = enumerateEndgame(data.facit);
+  const { lock, games } = scanLiveEndgame(data);
+  const scenarios = enumerateEndgame(data.facit, lock);
   if (!scenarios || scenarios.length === 0) return null;
   const participants = data.participants ?? [];
   if (participants.length === 0) return null;
@@ -1609,7 +1655,7 @@ function computeForecast(data) {
   const n = scenarios.length;
   for (const p of people) p.prob = p.posCount.map((c) => c / n);
   people.sort((a, b) => (b.current - a.current) || a.name.localeCompare(b.name, 'sv'));
-  return { people, scenarios: n, positions: N };
+  return { people, scenarios: n, positions: N, live: games };
 }
 
 function renderForecast(data) {
@@ -1617,9 +1663,13 @@ function renderForecast(data) {
   forecastEl.hidden = !hasTree;
   if (!hasTree || !forecastOpen) return;
 
+  const liveSig = (data.live?.matches ?? [])
+    .filter((m) => m.status === 'live')
+    .map((m) => [m.pair, m.homeGoals, m.awayGoals]);
   const sig = JSON.stringify([
     data.facit?.rounds?.sf, data.facit?.rounds?.final, data.facit?.winner, tipsLoaded,
     (data.participants ?? []).map((p) => [p.name, p.total]),
+    liveSig,
   ]);
   if (sig === forecastSig && forecastBodyEl.childElementCount > 0) return;
   forecastSig = sig;
@@ -1627,6 +1677,7 @@ function renderForecast(data) {
   const fc = computeForecast(data);
   forecastBodyEl.replaceChildren();
   if (!fc || fc.pending) {
+    forecastBodyEl.classList.remove('is-live');
     const msg = document.createElement('p');
     msg.className = 'forecast-empty';
     msg.textContent = fc?.pending ? 'Hämtar tips…' : 'Prognosen aktiveras när kvartsfinalslagen är klara.';
@@ -1635,11 +1686,43 @@ function renderForecast(data) {
     return;
   }
 
+  // Live/bekräftat-status: tydlig markör för om prognosen räknar med pågående
+  // matchresultat (provisoriskt) eller bara bekräftade.
+  const live = fc.live ?? [];
+  forecastBodyEl.classList.toggle('is-live', live.length > 0);
+  const status = document.createElement('div');
+  status.className = 'forecast-status' + (live.length ? ' forecast-status--live' : '');
+  const dot = document.createElement('span');
+  dot.className = 'forecast-dot';
+  const label = document.createElement('span');
+  label.textContent = live.length
+    ? 'LIVE – räknar med pågående matchresultat (provisoriskt)'
+    : 'Baserat på bekräftade resultat';
+  status.append(dot, label);
+  forecastBodyEl.append(status);
+
+  if (live.length) {
+    const roundName = { qf: 'Kvartsfinal', sf: 'Semifinal', final: 'Final' };
+    const ul = document.createElement('ul');
+    ul.className = 'forecast-live-list';
+    for (const gm of live) {
+      const li = document.createElement('li');
+      const min = gm.minute != null ? ` (${gm.minute}′)` : '';
+      const tail = gm.leader
+        ? (gm.round === 'final' ? ` → ${gm.leader} provisorisk vinnare` : ` → ${gm.leader} provisoriskt vidare`)
+        : ' → oavgjort, räknas 50/50';
+      li.textContent = `${roundName[gm.round] ?? ''}: ${gm.home} ${gm.homeGoals}–${gm.awayGoals} ${gm.away}${min}${tail}`;
+      ul.append(li);
+    }
+    forecastBodyEl.append(ul);
+  }
+
   const intro = document.createElement('p');
   intro.className = 'forecast-intro';
   intro.textContent = fc.scenarios === 1
     ? 'Alla slutspelsmatcher avgjorda – slutställningen är spikad.'
-    : `Sannolikhet för slutplacering över ${fc.scenarios} möjliga utfall av kvarvarande matcher (varje match 50/50). Procent per placering.`;
+    : `Sannolikhet för slutplacering över ${fc.scenarios} möjliga utfall av kvarvarande oavgjorda matcher (var och en 50/50)`
+      + `${live.length ? '; pågående matcher räknas efter nuvarande ledning' : ''}. Procent per placering.`;
   forecastBodyEl.append(intro);
 
   const scroll = document.createElement('div');

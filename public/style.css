@@ -1341,6 +1341,50 @@ main {
   background: rgba(31, 157, 85, calc(0.10 + 0.55 * var(--w)));
 }
 .forecast-table td.fc-modal { font-weight: 800; }
+.forecast-status {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.forecast-dot {
+  flex: none;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--ink-soft);
+  opacity: 0.5;
+}
+.forecast-status--live { color: #e5484d; }
+.forecast-status--live .forecast-dot {
+  background: #e5484d;
+  opacity: 1;
+  animation: fc-pulse 1.4s ease-in-out infinite;
+}
+@keyframes fc-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(229, 72, 77, 0.55); }
+  50% { box-shadow: 0 0 0 0.35rem rgba(229, 72, 77, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .forecast-status--live .forecast-dot { animation: none; }
+}
+.forecast-live-list {
+  margin: 0 0 0.7rem;
+  padding: 0.45rem 0.65rem;
+  list-style: none;
+  background: rgba(229, 72, 77, 0.1);
+  border-left: 3px solid #e5484d;
+  border-radius: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--ink);
+}
+.forecast-live-list li { margin: 0.12rem 0; }
+.forecast-body.is-live { box-shadow: 0 0 0 2px rgba(229, 72, 77, 0.55), var(--shadow); }
 
 @media (min-width: 600px) {
   .row-button { padding: 0.85rem 1.1rem; }
