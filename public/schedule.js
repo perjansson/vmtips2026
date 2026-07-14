@@ -177,10 +177,10 @@ window.SCHEDULE = [
     { time: '03:00', home: 'Argentina', away: 'Schweiz', ch: 'SVT', ko: 'qf' },
   ] },
   { date: '2026-07-14', label: 'Tis 14 juli', tv4: null, games: [
-    { time: '21:00', title: 'Semifinal (match 101)', ch: 'SVT', stageStart: 'Semifinal' },
+    { time: '21:00', home: 'Frankrike', away: 'Spanien', ch: 'SVT', ko: 'sf', stageStart: 'Semifinal' },
   ] },
   { date: '2026-07-15', label: 'Ons 15 juli', tv4: 'Per', games: [
-    { time: '21:00', title: 'Semifinal (match 102)', ch: 'TV4' },
+    { time: '21:00', home: 'England', away: 'Argentina', ch: 'TV4', ko: 'sf' },
   ] },
   { date: '2026-07-18', label: 'Lör 18 juli', tv4: null, games: [
     { time: '23:00', title: 'Bronsmatch', ch: 'SVT', stageStart: 'Bronsmatch' },
