@@ -183,9 +183,9 @@ window.SCHEDULE = [
     { time: '21:00', home: 'England', away: 'Argentina', ch: 'TV4', ko: 'sf' },
   ] },
   { date: '2026-07-18', label: 'Lör 18 juli', tv4: null, games: [
-    { time: '23:00', title: 'Bronsmatch', ch: 'SVT', stageStart: 'Bronsmatch' },
+    { time: '23:00', title: 'Bronsmatch', note: 'Frankrike mot förloraren av England–Argentina', ch: 'SVT', stageStart: 'Bronsmatch' },
   ] },
   { date: '2026-07-19', label: 'Sön 19 juli', tv4: 'Tomas', games: [
-    { time: '21:00', title: 'Finalen', ch: 'TV4', stageStart: 'Final' },
+    { time: '21:00', title: 'Finalen', note: 'Spanien mot vinnaren av England–Argentina', ch: 'TV4', stageStart: 'Final' },
   ] },
 ];
