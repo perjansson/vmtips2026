@@ -1401,3 +1401,184 @@ main {
   .row.points-flash .total-value { animation: none; }
   .balls span { animation: none; }
 }
+
+/* --------------------------------------------------------------------
+   Slutfirande — modal med podium (topp 3) och resten av deltagarna.
+   Renderas av renderFinalCelebration() när facit.winner är satt.
+   -------------------------------------------------------------------- */
+
+.final-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.62);
+  z-index: 1000;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  animation: final-fade 220ms ease-out both;
+}
+
+.final-modal {
+  position: relative;
+  width: 100%;
+  background: var(--surface);
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  box-shadow: var(--shadow);
+}
+
+.final-modal-header {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  background: linear-gradient(180deg, var(--surface), var(--surface-2));
+  border-bottom: 1px solid var(--line);
+  z-index: 1;
+}
+
+.final-title {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--ink);
+}
+
+.final-close {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: 1.4rem;
+  line-height: 1;
+  padding: 4px 10px;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.final-close:hover, .final-close:focus-visible {
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--ink);
+  outline: none;
+}
+
+.final-podium {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  align-items: end;
+  gap: 8px;
+  padding: 24px 16px 8px;
+  min-height: 220px;
+}
+
+.final-podium-bar {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 10px 6px 12px;
+  border-radius: 10px 10px 0 0;
+  color: #1a1a1a;
+  text-align: center;
+  min-height: 90px;
+  font-weight: 600;
+  overflow: hidden;
+}
+
+.final-podium-bar.gold   { background: linear-gradient(180deg, #fde68a, var(--gold));   min-height: 200px; }
+.final-podium-bar.silver { background: linear-gradient(180deg, #e5e7eb, var(--silver)); min-height: 150px; }
+.final-podium-bar.bronze { background: linear-gradient(180deg, #fed7aa, var(--bronze)); min-height: 110px; color: #fff; }
+
+.final-podium-medal { font-size: 1.6rem; line-height: 1; margin-bottom: 4px; }
+.final-podium-names { display: flex; flex-direction: column; gap: 2px; }
+.final-podium-name  { font-size: 0.95rem; }
+.final-podium-rank  { font-size: 0.75rem; opacity: 0.85; letter-spacing: 0.04em; }
+.final-podium-total { font-size: 0.85rem; opacity: 0.9; margin-top: 2px; }
+
+.final-podium-bar.gold::after {
+  content: "";
+  position: absolute;
+  inset: -20% -20% 40% -20%;
+  background: radial-gradient(circle at 50% 60%, rgba(255, 255, 255, 0.55), transparent 60%);
+  animation: final-sparkle 3.2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.final-rest {
+  padding: 12px 16px 20px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.final-rest-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  font-size: 0.95rem;
+}
+.final-rest-row:last-child { border-bottom: 0; }
+.final-rest-name  { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.final-rest-rank  { color: var(--ink-soft); min-width: 2ch; text-align: right; }
+.final-rest-total { color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+
+.final-confetti {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.final-pill {
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  z-index: 999;
+  appearance: none;
+  border: 0;
+  background: var(--gold);
+  color: #1a1a1a;
+  font-weight: 700;
+  padding: 10px 14px;
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+.final-pill:hover, .final-pill:focus-visible {
+  filter: brightness(1.05);
+  outline: none;
+}
+
+@keyframes final-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes final-sparkle {
+  0%, 100% { opacity: 0.35; transform: scale(1); }
+  50%      { opacity: 0.75; transform: scale(1.06); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .final-backdrop { animation: none; }
+  .final-podium-bar.gold::after { animation: none; opacity: 0.4; }
+}
+
+@media (min-width: 600px) {
+  .final-backdrop {
+    align-items: center;
+    padding: 24px;
+  }
+  .final-modal {
+    max-width: 520px;
+    border-radius: 14px;
+    max-height: calc(100vh - 48px);
+  }
+}

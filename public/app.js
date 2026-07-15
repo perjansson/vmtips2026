@@ -1859,6 +1859,8 @@ function render(data) {
   if (missing.length) notices.push(`Hittar ingen flik för: ${missing.join(', ')}.`);
   noticeEl.textContent = notices.join(' ');
   noticeEl.hidden = notices.length === 0;
+
+  renderFinalCelebration(data);
 }
 
 async function poll() {
@@ -1881,6 +1883,241 @@ async function poll() {
     renderUpdatedAt();
     restartUpdateTimer();
   }
+}
+
+// --------------------------------------------------------------------
+// Slutfirande — modal med podium + resten av deltagarna. Nyckelvillkor:
+// payload.facit.winner är satt. Stateless: ingen storage, bara en session-
+// flagga som nollställs om winner går tillbaka till null.
+// --------------------------------------------------------------------
+
+let finalClosedThisSession = false;
+let finalConfettiRaf = null;
+let finalLastWinner = null;
+
+function podiumGroups(participants) {
+  const byRank = new Map();
+  for (const p of participants) {
+    const list = byRank.get(p.rank) ?? [];
+    list.push(p);
+    byRank.set(p.rank, list);
+  }
+  return [...byRank.keys()]
+    .sort((a, b) => a - b)
+    .map((rank) => {
+      const group = byRank.get(rank);
+      return { rank, names: group.map((g) => g.name), total: group[0].total };
+    });
+}
+
+function openConfetti(canvas) {
+  stopConfetti();
+  const ctx = canvas.getContext('2d');
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+  canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+  ctx.scale(dpr, dpr);
+
+  const colors = ['#d4a017', '#9aa3ad', '#b06d3f', '#1f9d55', '#f59e0b', '#ffffff'];
+  const particles = Array.from({ length: 60 }, () => ({
+    x: rect.width / 2 + (Math.random() - 0.5) * rect.width * 0.4,
+    y: rect.height * 0.35 + (Math.random() - 0.5) * 40,
+    vx: (Math.random() - 0.5) * 6,
+    vy: -Math.random() * 6 - 2,
+    r: 3 + Math.random() * 4,
+    color: colors[Math.floor(Math.random() * colors.length)],
+    rot: Math.random() * Math.PI,
+    vr: (Math.random() - 0.5) * 0.3,
+  }));
+
+  const start = performance.now();
+  const durationMs = 1600;
+  function frame(now) {
+    const t = now - start;
+    ctx.clearRect(0, 0, rect.width, rect.height);
+    for (const p of particles) {
+      p.vy += 0.18;
+      p.x += p.vx;
+      p.y += p.vy;
+      p.rot += p.vr;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.r, -p.r * 0.4, p.r * 2, p.r * 0.8);
+      ctx.restore();
+    }
+    if (t < durationMs) {
+      finalConfettiRaf = requestAnimationFrame(frame);
+    } else {
+      ctx.clearRect(0, 0, rect.width, rect.height);
+      finalConfettiRaf = null;
+    }
+  }
+  finalConfettiRaf = requestAnimationFrame(frame);
+}
+
+function stopConfetti() {
+  if (finalConfettiRaf != null) {
+    cancelAnimationFrame(finalConfettiRaf);
+    finalConfettiRaf = null;
+  }
+}
+
+function closeFinalModal() {
+  finalClosedThisSession = true;
+  stopConfetti();
+  document.getElementById('final-backdrop')?.remove();
+  ensureFinalPill();
+}
+
+function ensureFinalPill() {
+  if (document.getElementById('final-pill')) return;
+  const btn = document.createElement('button');
+  btn.id = 'final-pill';
+  btn.type = 'button';
+  btn.className = 'final-pill';
+  btn.textContent = '🏆 Slutresultat';
+  btn.addEventListener('click', () => {
+    finalClosedThisSession = false;
+    document.getElementById('final-pill')?.remove();
+    if (lastData) renderFinalCelebration(lastData);
+  });
+  document.body.appendChild(btn);
+}
+
+function buildFinalModal(data) {
+  const backdrop = document.createElement('div');
+  backdrop.id = 'final-backdrop';
+  backdrop.className = 'final-backdrop';
+  backdrop.addEventListener('click', (e) => {
+    if (e.target === backdrop) closeFinalModal();
+  });
+
+  const modal = document.createElement('div');
+  modal.className = 'final-modal';
+  modal.setAttribute('role', 'dialog');
+  modal.setAttribute('aria-modal', 'true');
+  modal.setAttribute('aria-labelledby', 'final-title');
+
+  const header = document.createElement('div');
+  header.className = 'final-modal-header';
+  const title = document.createElement('div');
+  title.id = 'final-title';
+  title.className = 'final-title';
+  title.textContent = '🏆 VM-tipset 2026 – Slutresultat 🏆';
+  const close = document.createElement('button');
+  close.type = 'button';
+  close.className = 'final-close';
+  close.setAttribute('aria-label', 'Stäng');
+  close.textContent = '✕';
+  close.addEventListener('click', closeFinalModal);
+  header.append(title, close);
+
+  const podium = document.createElement('div');
+  podium.className = 'final-podium';
+  const canvas = document.createElement('canvas');
+  canvas.className = 'final-confetti';
+  podium.appendChild(canvas);
+
+  const groups = podiumGroups(data.participants ?? []);
+  const top3 = groups.slice(0, 3);
+  const medalClass = ['gold', 'silver', 'bronze'];
+  const medalEmoji = ['🥇', '🥈', '🥉'];
+  // Rendera i visuell ordning: silver (vänster), guld (mitten, högst), brons (höger).
+  const visualOrder = [1, 0, 2];
+  for (const idx of visualOrder) {
+    const g = top3[idx];
+    if (!g) {
+      podium.appendChild(document.createElement('div'));
+      continue;
+    }
+    const bar = document.createElement('div');
+    bar.className = `final-podium-bar ${medalClass[idx]}`;
+    const medal = document.createElement('div');
+    medal.className = 'final-podium-medal';
+    medal.textContent = medalEmoji[idx];
+    const rank = document.createElement('div');
+    rank.className = 'final-podium-rank';
+    rank.textContent = g.names.length > 1 ? `=${g.rank}` : `${g.rank}`;
+    const names = document.createElement('div');
+    names.className = 'final-podium-names';
+    for (const n of g.names) {
+      const nm = document.createElement('div');
+      nm.className = 'final-podium-name';
+      nm.textContent = n;
+      names.appendChild(nm);
+    }
+    const total = document.createElement('div');
+    total.className = 'final-podium-total';
+    total.textContent = `${g.total} p`;
+    bar.append(medal, rank, names, total);
+    podium.appendChild(bar);
+  }
+
+  const rest = document.createElement('div');
+  rest.className = 'final-rest';
+  const restParticipants = (data.participants ?? []).filter((p) => p.rank >= 4);
+  for (const p of restParticipants) {
+    const row = document.createElement('div');
+    row.className = 'final-rest-row';
+    const nameCell = document.createElement('span');
+    nameCell.className = 'final-rest-name';
+    const rankSpan = document.createElement('span');
+    rankSpan.className = 'final-rest-rank';
+    rankSpan.textContent = `${p.rank}.`;
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = p.name;
+    nameCell.append(rankSpan, nameSpan);
+    const totalCell = document.createElement('span');
+    totalCell.className = 'final-rest-total';
+    totalCell.textContent = `${p.total} p`;
+    row.append(nameCell, totalCell);
+    rest.appendChild(row);
+  }
+
+  modal.append(header, podium, rest);
+  backdrop.appendChild(modal);
+  return { backdrop, canvas, close };
+}
+
+function renderFinalCelebration(data) {
+  const winner = data?.facit?.winner ?? null;
+
+  if (winner == null && finalLastWinner != null) {
+    finalClosedThisSession = false;
+  }
+  finalLastWinner = winner;
+
+  if (winner == null) {
+    document.getElementById('final-backdrop')?.remove();
+    document.getElementById('final-pill')?.remove();
+    stopConfetti();
+    return;
+  }
+
+  if (finalClosedThisSession) {
+    ensureFinalPill();
+    return;
+  }
+
+  document.getElementById('final-backdrop')?.remove();
+  document.getElementById('final-pill')?.remove();
+
+  const { backdrop, canvas, close } = buildFinalModal(data);
+  document.body.appendChild(backdrop);
+  close.focus();
+
+  const onKey = (e) => {
+    if (e.key === 'Escape') {
+      window.removeEventListener('keydown', onKey);
+      closeFinalModal();
+    }
+  };
+  window.addEventListener('keydown', onKey);
+
+  requestAnimationFrame(() => openConfetti(canvas));
 }
 
 // Servern bakar in aktuell ställning i sidan – rendera den direkt så att
