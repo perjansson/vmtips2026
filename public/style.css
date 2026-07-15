@@ -324,9 +324,8 @@ body {
 .kop-standings-pts { white-space: nowrap; text-align: right; font-weight: 700; }
 
 @media (min-width: 600px) {
-  .ko-panel-toggle { display: none; }
-  .ko-panel.collapsed .ko-panel-rounds { display: flex; }
-  /* Ronder sida vid sida (vänster→höger som ett bracket-flöde). */
+  /* Slutspelslag-panelen fälls in/ut med knappen även på desktop (dold som
+     standard). Ronder sida vid sida (vänster→höger som ett bracket-flöde). */
   .ko-panel-rounds {
     flex-direction: row;
     flex-wrap: wrap;

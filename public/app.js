@@ -144,8 +144,8 @@ schedShowEl.addEventListener('click', () => {
   }
 });
 
-// Slutspelslag-panelen: utfälld som standard. På mobil kan den fällas ihop
-// (knapp); på desktop visas den alltid (knappen göms i CSS).
+// Slutspelslag-panelen: ihopfälld som standard, fälls ut med knappen. Samma
+// beteende på mobil och desktop (desktop får bara ronderna sida vid sida).
 koPanelToggleEl.addEventListener('click', () => {
   const collapsing = !koPanelEl.classList.contains('collapsed');
   koPanelEl.classList.toggle('collapsed', collapsing);
