@@ -10,8 +10,9 @@
 // Fält per dag: date (ISO), label, tv4 ('Per' | 'Tomas' | null = endast SVT).
 // Fält per match: time ('HH:MM'), ch ('TV4' | 'SVT'), och antingen
 // {home, away} (gruppmatch), {home, away, ko: '<rond>'} (slutspelsmatch med
-// kända lag; ko är rondtypen 'r32'|'r16'|'qf'|'sf'|'final' så klienten vet
-// nästa rond – räknas inte som gruppmatch) eller {title, note?} (platshållare).
+// kända lag; ko är rondtypen 'r32'|'r16'|'qf'|'sf'|'final' (eller 'third' =
+// bronsmatch, ger inga poäng) så klienten vet nästa rond – räknas inte som
+// gruppmatch) eller {title, note?} (platshållare).
 
 window.SCHEDULE = [
   { date: '2026-06-11', label: 'Tor 11 juni', tv4: 'Per', games: [
@@ -183,9 +184,9 @@ window.SCHEDULE = [
     { time: '21:00', home: 'England', away: 'Argentina', ch: 'TV4', ko: 'sf' },
   ] },
   { date: '2026-07-18', label: 'Lör 18 juli', tv4: null, games: [
-    { time: '23:00', title: 'Bronsmatch', note: 'Frankrike mot förloraren av England–Argentina', ch: 'SVT', stageStart: 'Bronsmatch' },
+    { time: '23:00', home: 'Frankrike', away: 'England', ch: 'SVT', ko: 'third', stageStart: 'Bronsmatch' },
   ] },
   { date: '2026-07-19', label: 'Sön 19 juli', tv4: 'Tomas', games: [
-    { time: '21:00', title: 'Finalen', note: 'Spanien mot vinnaren av England–Argentina', ch: 'TV4', stageStart: 'Final' },
+    { time: '21:00', home: 'Spanien', away: 'Argentina', ch: 'TV4', ko: 'final', stageStart: 'Final' },
   ] },
 ];
