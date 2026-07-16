@@ -2022,13 +2022,18 @@ function buildFinalModal(data) {
   podium.appendChild(canvas);
 
   const groups = podiumGroups(data.participants ?? []);
-  const top3 = groups.slice(0, 3);
+  // Fasta pallplatser efter rank: guld = 1:a, silver = 2:a, brons = 3:a. Delad
+  // placering staplas på samma stapel (=N). En rond som hoppas över p.g.a. delad
+  // placering (t.ex. delad etta ⇒ ingen silver, nästa är =3) blir tom. Rank >= 4
+  // hamnar i listan nedanför – inget lag ligger på både pall och lista.
+  const byRank = new Map(groups.map((g) => [g.rank, g]));
+  const slots = [byRank.get(1) ?? null, byRank.get(2) ?? null, byRank.get(3) ?? null];
   const medalClass = ['gold', 'silver', 'bronze'];
   const medalEmoji = ['🥇', '🥈', '🥉'];
   // Rendera i visuell ordning: silver (vänster), guld (mitten, högst), brons (höger).
   const visualOrder = [1, 0, 2];
   for (const idx of visualOrder) {
-    const g = top3[idx];
+    const g = slots[idx];
     if (!g) {
       podium.appendChild(document.createElement('div'));
       continue;
@@ -2077,7 +2082,8 @@ function buildFinalModal(data) {
     rest.appendChild(row);
   }
 
-  modal.append(header, podium, rest);
+  modal.append(header, podium);
+  if (rest.childElementCount > 0) modal.append(rest);
   backdrop.appendChild(modal);
   return { backdrop, canvas, close };
 }

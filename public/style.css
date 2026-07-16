@@ -1494,8 +1494,14 @@ main {
 .final-podium-bar.bronze { background: linear-gradient(180deg, #fed7aa, var(--bronze)); min-height: 110px; color: #fff; }
 
 .final-podium-medal { font-size: 1.6rem; line-height: 1; margin-bottom: 4px; }
-.final-podium-names { display: flex; flex-direction: column; gap: 2px; }
-.final-podium-name  { font-size: 0.95rem; }
+.final-podium-names { display: flex; flex-direction: column; gap: 2px; width: 100%; }
+.final-podium-name  {
+  font-size: 0.95rem;
+  line-height: 1.15;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
 .final-podium-rank  { font-size: 0.75rem; opacity: 0.85; letter-spacing: 0.04em; }
 .final-podium-total { font-size: 0.85rem; opacity: 0.9; margin-top: 2px; }
 
